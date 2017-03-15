@@ -63,10 +63,7 @@ NTSTATUS DriverEntry(
 		return STATUS_UNSUCCESSFUL;
 	}
 
-	pMDL = wpGlobles.pMdl;
-	syscallTable = (PVOID)wpGlobles.callTable;
-
-	oldZwSetValueKey = (ZwSetValueKeyPtr)HookSSDT((BYTE *)ZwSetValueKey, (BYTE *)HookedZwSetValueKey, (DWORD32 *)syscallTable);
+	oldZwSetValueKey = (ZwSetValueKeyPtr)HookSSDT((BYTE *)ZwSetValueKey, (BYTE *)HookedZwSetValueKey, wpGlobles.callTable);
 
 	return(ntStatus);
 }
@@ -117,6 +114,7 @@ VOID HookSSDTUnload(
 	PDEVICE_OBJECT deviceObj = DriverObject->DeviceObject;
 	UNICODE_STRING uniDosDevName = { 0 };
 
+	UnHookSSDT(HookedZwSetValueKey, oldZwSetValueKey, wpGlobles.callTable);
 	RtlInitUnicodeString(&uniDosDevName, DOS_DEVICE_NAME);
 
 	IoDeleteSymbolicLink(&uniDosDevName);
@@ -365,7 +363,7 @@ NTSTATUS HookSSDTGetRegInfo(HANDLE keyHandle, UNICODE_STRING regValueName)
 	return STATUS_SUCCESS;
 }
 
-__declspec(dllimport) DWORD32 PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS* pProcess);
+// __declspec(dllimport) DWORD32 PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS* pProcess);
 __declspec(dllimport) NTSTATUS ZwOpenProcess(
 	_Out_    PHANDLE            ProcessHandle,
 	_In_     ACCESS_MASK        DesiredAccess,
@@ -375,7 +373,8 @@ __declspec(dllimport) NTSTATUS ZwOpenProcess(
 
 
 __declspec(dllimport) BYTE *PsGetProcessPeb(PEPROCESS Process);
-__declspec(dllimport) NTSTATUS ZwQueryInformationProcess(
+/*__declspec(dllimport)*/ 
+typedef NTSTATUS (*ZwQueryInformationProcessPtr) (
 	_In_      HANDLE           ProcessHandle,
 	_In_      PROCESSINFOCLASS ProcessInformationClass,
 	_Out_     PVOID            ProcessInformation,
@@ -391,6 +390,9 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 	HANDLE hProcess;
 	OBJECT_ATTRIBUTES objectAttr;
 	CLIENT_ID clientID;
+	ZwQueryInformationProcessPtr ZwQueryInformationProcess = NULL;
+
+	PAGED_CODE();
 
 	InitializeObjectAttributes(&objectAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
 	clientID.UniqueProcess = ProcessId;
@@ -398,38 +400,61 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 
 	status = ZwOpenProcess(&hProcess, READ_CONTROL, &objectAttr, &clientID);
 	if (!NT_SUCCESS(status)){
-		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() call ZwOpenProcess failed, errorCode=%d\n", status);
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "failed, errorCode=%d\n", status);
 		return(status);
 	}
-
-	/*PEPROCESS pEprocess = PsGetCurrentProcess();
 
 	UNICODE_STRING uniProcName;
-	RtlInitUnicodeString(&uniProcName, "PsGetProcessPeb");
+	RtlInitUnicodeString(&uniProcName, L"ZwQueryInformationProcess");
 
-	MmGetSystemRoutineAddress(&uniProcName);
-	PEB *PsGetProcessPeb(pEprocess);*/
+	ZwQueryInformationProcess = (ZwQueryInformationProcessPtr) MmGetSystemRoutineAddress(&uniProcName);
+	if (NULL == ZwQueryInformationProcess){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "failed, errorCode=%d\n", status);
+		return STATUS_PROCEDURE_NOT_FOUND;
+	}
 
-	PROCESS_BASIC_INFORMATION processBasicInfo = { 0 };
+	
+	PVOID imgFileNameBuf = NULL;
+	ULONG nameLen = 0;
+
+	status = ZwQueryInformationProcess(hProcess, ProcessImageFileName, NULL, 0, &nameLen);
+	if (status != STATUS_INFO_LENGTH_MISMATCH){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "failed, errorCode=%d\n", status);
+		return status;
+	}
+
+	imgFileNameBuf = ExAllocatePoolWithTag(NonPagedPool, nameLen, POOLTAG_HOOK_SSDT_01);
+	if (imgFileNameBuf == NULL){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "ExAllocatePoolWithTag failed, errorCode=%d\n", status);
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+	RtlZeroMemory(imgFileNameBuf, nameLen);
 	status = ZwQueryInformationProcess(hProcess,
-		ProcessBasicInformation,
-		&processBasicInfo,
-		sizeof(PROCESS_BASIC_INFORMATION),
-		NULL);
+		ProcessImageFileName,
+		imgFileNameBuf,
+		nameLen,
+		&nameLen);
 	if (!NT_SUCCESS(status)){
-		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() call ZwQueryInformationProcess failed, errorCode=%d\n", status);
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "get process info fialed, errorCode=%d\n", status);
+		ExFreePoolWithTag(imgFileNameBuf, POOLTAG_HOOK_SSDT_01);
 		return(status);
 	}
 
-	if (processBasicInfo.PebBaseAddress == NULL)
+	PUNICODE_STRING pUniImgFileName = (PUNICODE_STRING)imgFileNameBuf;
+
+	if (pUniImgFileName->Length > 0)
 	{
-		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() get PEB error\n");
-		return(STATUS_INVALID_ADDRESS);
+		ANSI_STRING imgFileName;
+		RtlUnicodeStringToAnsiString(&imgFileName, pUniImgFileName, TRUE);
+		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "PID: %d, ImageFilePath: %s\n", ProcessId, imgFileName.Buffer);
+		RtlFreeAnsiString(&imgFileName);
+		ExFreePoolWithTag(imgFileNameBuf, POOLTAG_HOOK_SSDT_01);
+		return STATUS_SUCCESS;
 	}
 
 	//LIST_ENTRY listNode = processBasicInfo.PebBaseAddress->LoaderData->InMemoryOrderModuleList;
 
-	ANSI_STRING ansiCmdLine;
+	/*ANSI_STRING ansiCmdLine;
 	status = RtlUnicodeStringToAnsiString(&ansiCmdLine, &processBasicInfo.PebBaseAddress->ProcessParameters->CommandLine, TRUE);
 	if (NT_SUCCESS(status)){
 		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "Caller Process commandline:%s\n", ansiCmdLine.Buffer);
@@ -439,7 +464,7 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() call RtlUnicodeStringToAnsiString failed, errorCode=%d\n", status);
 	}
 
-	return(status);
+	return(status);*/
 }
 
 //PVOID GetProcAddr(UNICODE_STRING modeName, UNICODE_STRING procName)

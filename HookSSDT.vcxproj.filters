@@ -27,6 +27,9 @@
     <ClInclude Include="HookSSDT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\Program Files (x86)\Windows Kits\8.1\Include\um\Psapi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HookSSDT.c">
