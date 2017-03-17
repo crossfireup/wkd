@@ -52,6 +52,7 @@ NTSTATUS DriverEntry(
 	if (!NT_SUCCESS(ntStatus)){
 		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "IoCreateSymbolicLink failed \n");
 		IoDeleteDevice(deviceObj);
+		return(ntStatus);
 	}
 
 	PMDL pMDL;
@@ -64,6 +65,11 @@ NTSTATUS DriverEntry(
 	}
 
 	oldZwSetValueKey = (ZwSetValueKeyPtr)HookSSDT((BYTE *)ZwSetValueKey, (BYTE *)HookedZwSetValueKey, wpGlobles.callTable);
+
+	ntStatus = PsSetCreateProcessNotifyRoutine(ProcNotifyRoutine, FALSE);
+	if (!NT_SUCCESS(ntStatus)){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "failed, errCode=%d\n", ntStatus);
+	}
 
 	return(ntStatus);
 }
@@ -115,8 +121,9 @@ VOID HookSSDTUnload(
 	UNICODE_STRING uniDosDevName = { 0 };
 
 	UnHookSSDT(HookedZwSetValueKey, oldZwSetValueKey, wpGlobles.callTable);
-	RtlInitUnicodeString(&uniDosDevName, DOS_DEVICE_NAME);
+	PsSetCreateProcessNotifyRoutine(ProcNotifyRoutine, TRUE);
 
+	RtlInitUnicodeString(&uniDosDevName, DOS_DEVICE_NAME);
 	IoDeleteSymbolicLink(&uniDosDevName);
 
 	if (deviceObj != NULL){
@@ -373,8 +380,8 @@ __declspec(dllimport) NTSTATUS ZwOpenProcess(
 
 
 __declspec(dllimport) BYTE *PsGetProcessPeb(PEPROCESS Process);
-/*__declspec(dllimport)*/ 
-typedef NTSTATUS (*ZwQueryInformationProcessPtr) (
+/*__declspec(dllimport)*/
+typedef NTSTATUS(*ZwQueryInformationProcessPtr) (
 	_In_      HANDLE           ProcessHandle,
 	_In_      PROCESSINFOCLASS ProcessInformationClass,
 	_Out_     PVOID            ProcessInformation,
@@ -407,13 +414,13 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 	UNICODE_STRING uniProcName;
 	RtlInitUnicodeString(&uniProcName, L"ZwQueryInformationProcess");
 
-	ZwQueryInformationProcess = (ZwQueryInformationProcessPtr) MmGetSystemRoutineAddress(&uniProcName);
+	ZwQueryInformationProcess = (ZwQueryInformationProcessPtr)MmGetSystemRoutineAddress(&uniProcName);
 	if (NULL == ZwQueryInformationProcess){
 		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "failed, errorCode=%d\n", status);
 		return STATUS_PROCEDURE_NOT_FOUND;
 	}
 
-	
+
 	PVOID imgFileNameBuf = NULL;
 	ULONG nameLen = 0;
 
@@ -457,15 +464,35 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 	/*ANSI_STRING ansiCmdLine;
 	status = RtlUnicodeStringToAnsiString(&ansiCmdLine, &processBasicInfo.PebBaseAddress->ProcessParameters->CommandLine, TRUE);
 	if (NT_SUCCESS(status)){
-		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "Caller Process commandline:%s\n", ansiCmdLine.Buffer);
-		RtlFreeAnsiString(&ansiCmdLine);
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "Caller Process commandline:%s\n", ansiCmdLine.Buffer);
+	RtlFreeAnsiString(&ansiCmdLine);
 	}
 	else{
-		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() call RtlUnicodeStringToAnsiString failed, errorCode=%d\n", status);
+	TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "GetProcInfo() call RtlUnicodeStringToAnsiString failed, errorCode=%d\n", status);
 	}
 
 	return(status);*/
 }
+
+VOID
+ProcNotifyRoutine(
+IN HANDLE  ParentId,
+IN HANDLE  ProcessId,
+IN BOOLEAN  Create
+) 
+{
+	if (Create){
+		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "new Process Created, PPID:%d, PID:%d\n", ParentId, ProcessId);
+	}
+	else {
+		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "new Process exit, PPID:%d, PID:%d\n", ParentId, ProcessId);
+	}
+	GetProcInfo(ParentId);
+	GetProcInfo(ProcessId);
+
+	return STATUS_SUCCESS;
+}
+
 
 //PVOID GetProcAddr(UNICODE_STRING modeName, UNICODE_STRING procName)
 //{

@@ -165,6 +165,12 @@ extern "C" {
 
 	NTSTATUS GetProcInfo(HANDLE ProcessId);
 
+	VOID ProcNotifyRoutine(
+		IN HANDLE  ParentId,
+		IN HANDLE  ProcessId,
+		IN BOOLEAN  Create
+		);
+
 #ifdef __cplusplus
 }
 #endif
