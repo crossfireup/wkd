@@ -12,8 +12,8 @@
 #define POOLTAG_HOOK_SSDT_02 'Hk02'
 
 /* device name */
-#define NT_DEVICE_NAME      L"\\Device\\SIOCTL"
-#define DOS_DEVICE_NAME     L"\\DosDevices\\IoctlTest"
+#define NT_DEVICE_NAME      L"\\Device\\SysMon"
+#define DOS_DEVICE_NAME     L"\\DosDevices\\SysMon"
 
 //#pragma warning(disable: 4054 4055)
 
@@ -115,8 +115,8 @@ extern "C" {
 		PVOID                         Reserved7[1];
 		ULONG                         SessionId;
 	} PEB, *PPEB;
-	
-	
+
+
 
 #define TRACE_LEVEL_NONE        0   // Tracing is not on
 #define TRACE_LEVEL_CRITICAL    1   // Abnormal exit or termination
@@ -145,6 +145,46 @@ extern "C" {
 #define HOOKSSDT_KDPRINT(_x_)
 #endif
 
+	typedef struct _DEVICE_EXTENSION {
+		PDEVICE_OBJECT  Self;
+		LIST_ENTRY      EventQueueHead; // where all the user notification requests are queued
+		KSPIN_LOCK      QueueLock;
+	} DEVICE_EXTENSION, *PDEVICE_EXTENSION;
+
+	typedef enum {
+		IRP_BASED,
+		EVENT_BASED
+	} NOTIFY_TYPE;
+
+	typedef struct _NOTIFY_RECORD{
+		NOTIFY_TYPE     Type;
+		LIST_ENTRY      ListEntry;
+		union {
+			PKEVENT     Event;
+			PIRP        PendingIrp;
+		} Message;
+		KDPC            Dpc;
+		KTIMER          Timer;
+		PFILE_OBJECT    FileObject;
+		PDEVICE_EXTENSION   DeviceExtension;
+		BOOLEAN         CancelRoutineFreeMemory;
+	} NOTIFY_RECORD, *PNOTIFY_RECORD;
+
+	typedef struct _REGISTER_EVENT
+	{
+		NOTIFY_TYPE Type;
+		HANDLE  hEvent;
+		LARGE_INTEGER DueTime; // requested DueTime in 100-nanosecond units
+
+	} REGISTER_EVENT, *PREGISTER_EVENT;
+
+	typedef struct _FILE_CONTEXT{
+		//
+		// Lock to rundown threads that are dispatching I/Os on a file handle 
+		// while the cleanup for that handle is in progress.
+		//
+		IO_REMOVE_LOCK  FileRundownLock;
+	} FILE_CONTEXT, *PFILE_CONTEXT;
 
 	//
 	// WDFDRIVER Events
@@ -155,6 +195,9 @@ extern "C" {
 	_Dispatch_type_(IRP_MJ_CREATE)
 		_Dispatch_type_(IRP_MJ_CLOSE)
 		DRIVER_DISPATCH HookSSDTCreateClose;
+	
+	_Dispatch_type_(IRP_MJ_CLEANUP)
+	DRIVER_DISPATCH HookSSDTCleanup;
 
 	_Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 		DRIVER_DISPATCH HookSSDTDeviceControl;
