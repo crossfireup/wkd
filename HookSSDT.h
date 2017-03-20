@@ -15,7 +15,8 @@
 #define NT_DEVICE_NAME      L"\\Device\\SysMon"
 #define DOS_DEVICE_NAME     L"\\DosDevices\\SysMon"
 
-//#pragma warning(disable: 4054 4055)
+/* type cast from function ptr to Byte *  warning */
+#pragma warning(disable: 4054 4055)
 
 #ifdef __cplusplus
 extern "C" {
@@ -145,6 +146,9 @@ extern "C" {
 #define HOOKSSDT_KDPRINT(_x_)
 #endif
 
+#define IOCTL_REGISTER_EVENT \
+   CTL_CODE( FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS )
+
 	typedef struct _DEVICE_EXTENSION {
 		PDEVICE_OBJECT  Self;
 		LIST_ENTRY      EventQueueHead; // where all the user notification requests are queued
@@ -213,6 +217,12 @@ extern "C" {
 		IN HANDLE  ProcessId,
 		IN BOOLEAN  Create
 		);
+
+	DRIVER_DISPATCH RegisterEventBasedNotification;
+
+	DRIVER_DISPATCH RegisterIrpBasedNotification;
+	
+	DRIVER_CANCEL HookSSDTCancleRoutine;
 
 #ifdef __cplusplus
 }

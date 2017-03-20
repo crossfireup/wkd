@@ -29,7 +29,7 @@ NTSTATUS DriverEntry(
 	RtlInitUnicodeString(&uniNtDevName, NT_DEVICE_NAME);
 
 	ntStatus = IoCreateDevice(DriverObject,
-		0,
+		sizeof(DEVICE_EXTENSION),
 		&uniNtDevName,
 		FILE_DEVICE_UNKNOWN,
 		FILE_DEVICE_SECURE_OPEN,
@@ -56,9 +56,6 @@ NTSTATUS DriverEntry(
 		IoDeleteDevice(deviceObj);
 		return(ntStatus);
 	}
-
-	PMDL pMDL;
-	PVOID syscallTable;
 
 
 	wpGlobles = DisableWP_MDL(KeServiceDescriptorTable.KiServiceTable, KeServiceDescriptorTable.nSyscalls);
@@ -123,6 +120,8 @@ NTSTATUS HookSSDTCreateClose(
 		/* make sure FsContext not being used*/
 		ASSERT(pIoStackLoc->FileObject->FsContext == NULL);
 
+		pIoStackLoc->FileObject->FsContext = (PVOID)pFileCtx;
+
 		ntStatus = STATUS_SUCCESS;
 		break;
 	case IRP_MJ_CLOSE:
@@ -169,13 +168,13 @@ NTSTATUS HookSSDTCleanup(
 	pFileCtx = pIoStackLoc->FileObject->FsContext;
 
 	/* acquire cannot fial for that you cannot cleanup a handler for more than one time */
-	ntStatus = IoAcquireRemoveLock(&pFileCtx->FileRundownLock, POOLTAG_HOOK_SSDT_01);
+	ntStatus = IoAcquireRemoveLock(&pFileCtx->FileRundownLock, Irp);
 	ASSERT(NT_SUCCESS(ntStatus));
 	
 	/* Wait for all the threads that currently dispatching exit and prevent any threads dispatch
 	* I/O on the same handle 
 	*/
-	IoReleaseRemoveLockAndWait(&pFileCtx->FileRundownLock, POOLTAG_HOOK_SSDT_01);
+	IoReleaseRemoveLockAndWait(&pFileCtx->FileRundownLock, Irp);
 
 	InitializeListHead(&pDeviceExt->EventQueueHead);
 
@@ -231,7 +230,7 @@ NTSTATUS HookSSDTCleanup(
 		}
 	}
 
-	KeReleaseSpinLock(&pDeviceExt->QueueLock, &oldIrq);
+	KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrq);
 
 	while (!IsListEmpty(&cleanupList)){
 		PIRP pPendingIrp = NULL;
@@ -264,7 +263,6 @@ NTSTATUS HookSSDTDeviceControl(
 	_Inout_  struct _IRP *Irp
 	)
 {
-	PDEVICE_EXTENSION pDeviceExt = NULL;
 	NTSTATUS ntStatus = STATUS_SUCCESS;
 	PIO_STACK_LOCATION pIoStackLoc = NULL;
 	PREGISTER_EVENT pRegisterEvt = NULL;
@@ -274,22 +272,227 @@ NTSTATUS HookSSDTDeviceControl(
 
 	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "start IO control\n");
 
-	pDeviceExt = DeviceObject->DeviceExtension;
-
 	pIoStackLoc = IoGetCurrentIrpStackLocation(Irp);
 
-	pRegisterEvt = (PREGISTER_EVENT)Irp->AssociatedIrp.SystemBuffer;
+	ASSERT(pIoStackLoc->FileObject != NULL);
 
+	pFileCtx = pIoStackLoc->FileObject->FsContext;
 
-	Irp->IoStatus.Status = STATUS_SUCCESS;
-	Irp->IoStatus.Information = 0;
+	ntStatus = IoAcquireRemoveLock(&pFileCtx->FileRundownLock, Irp);
 
-	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+	if (!NT_SUCCESS(ntStatus)){
+		Irp->IoStatus.Status = ntStatus;
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+		
+		return(ntStatus);
+	}
+
+	switch (pIoStackLoc->Parameters.DeviceIoControl.IoControlCode){
+	case IOCTL_REGISTER_EVENT:
+		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "IOCTL_REGISTER_EVENT\n");
+
+		if (pIoStackLoc->Parameters.DeviceIoControl.InputBufferLength < sizeof(REGISTER_EVENT)){
+			TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "REGISTER_EVENT size too small\n");
+			ntStatus = STATUS_INVALID_PARAMETER;
+			break;
+		}
+
+		pRegisterEvt = (PREGISTER_EVENT)Irp->AssociatedIrp.SystemBuffer;
+
+		switch (pRegisterEvt->Type){
+		case IRP_BASED:
+			ntStatus = RegisterIrpBasedNotification(DeviceObject, Irp);
+			break;
+		case EVENT_BASED:
+			ntStatus = RegisterEventBasedNotification(DeviceObject, Irp);
+			break;
+		default:
+			ASSERTMSG("\t Unknown notification type from user mode\n", FALSE);
+			ntStatus = STATUS_INVALID_PARAMETER;
+			break;
+		}
+	default:
+		ASSERT(FALSE);  // should never hit this
+		ntStatus = STATUS_NOT_IMPLEMENTED;
+		break;
+	}
+
+	if (ntStatus != STATUS_PENDING){
+		Irp->IoStatus.Status = ntStatus;
+		Irp->IoStatus.Information = 0;
+
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+	}
+
+	IoReleaseRemoveLock(&pFileCtx->FileRundownLock, Irp);
 
 	return ntStatus;
 }
 
 
+NTSTATUS RegisterEventBasedNotification(
+	DEVICE_OBJECT *DeviceObj,
+	IRP *Irp)
+{
+	NTSTATUS ntStatus = STATUS_SUCCESS;
+	PIO_STACK_LOCATION pIoStackLoc = NULL;
+	PDEVICE_EXTENSION pDeviceExt = NULL;
+	PNOTIFY_RECORD pNotifyRecord = NULL;
+	PREGISTER_EVENT pRegisterEvt = NULL;
+
+	UNREFERENCED_PARAMETER(DeviceObj);
+	
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "RegisterEventBasedNotification\n");
+
+	pIoStackLoc = IoGetCurrentIrpStackLocation(Irp);
+	pDeviceExt = pIoStackLoc->DeviceObject->DeviceExtension;
+
+	pRegisterEvt = (PREGISTER_EVENT)Irp->AssociatedIrp.SystemBuffer;
+
+	pNotifyRecord = (PNOTIFY_RECORD)ExAllocatePoolWithQuotaTag(NonPagedPool, sizeof(REGISTER_EVENT), POOLTAG_HOOK_SSDT_01);
+
+	if (pNotifyRecord == NULL){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "ExAllocatePoolWithQuotaTag failed\n");	
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	InitializeListHead(&pNotifyRecord->ListEntry);
+
+	pNotifyRecord->FileObject = pIoStackLoc->FileObject;
+	pNotifyRecord->Type = EVENT_BASED;
+	pNotifyRecord->DeviceExtension = pIoStackLoc->DeviceObject->DeviceExtension;
+
+	ntStatus = ObReferenceObjectByHandle(pRegisterEvt->hEvent,
+		SYNCHRONIZE | EVENT_MODIFY_STATE,
+		*ExEventObjectType,
+		Irp->RequestorMode,
+		&pNotifyRecord->Message.Event,
+		NULL
+		);
+
+	if (!NT_SUCCESS(ntStatus)){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "ObReferenceObjectByHandle failed,errCode:%x\n", ntStatus);
+		ExFreePoolWithTag(pNotifyRecord, POOLTAG_HOOK_SSDT_01);
+		return ntStatus;
+	}
+	
+	ExInterlockedInsertTailList(&pDeviceExt->EventQueueHead, 
+		&pNotifyRecord->ListEntry,
+		&pDeviceExt->QueueLock	
+		);
+
+
+	return ntStatus;
+}
+
+NTSTATUS RegisterIrpBasedNotification(
+	DEVICE_OBJECT *DeviceObj,
+	IRP *Irp)
+{
+	PIO_STACK_LOCATION pIoStackLoc = NULL;
+	PDEVICE_EXTENSION pDeviceExt = NULL;
+	PREGISTER_EVENT pRegisterEvt = NULL;
+	PNOTIFY_RECORD pNotifyRecord = NULL;
+	KIRQL oldIrql = 0;
+
+	UNREFERENCED_PARAMETER(DeviceObj);
+
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "register Irp-based notification\n");
+
+	pIoStackLoc = IoGetCurrentIrpStackLocation(Irp);
+	pDeviceExt = pIoStackLoc->DeviceObject->DeviceExtension;
+	pRegisterEvt = (PREGISTER_EVENT)Irp->AssociatedIrp.SystemBuffer;
+
+	pNotifyRecord = ExAllocatePoolWithQuotaTag(NonPagedPool, sizeof(NOTIFY_RECORD), POOLTAG_HOOK_SSDT_01);
+
+	if (pNotifyRecord == NULL){
+		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "ExAllocatePoolWithQuotaTag fialed\n");
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	InitializeListHead(&pNotifyRecord->ListEntry);
+	pNotifyRecord->FileObject = pIoStackLoc->FileObject;
+	pNotifyRecord->DeviceExtension = pDeviceExt;
+	pNotifyRecord->Type = IRP_BASED;
+	pNotifyRecord->Message.PendingIrp = Irp;
+
+	KeAcquireSpinLock(&pDeviceExt->QueueLock, &oldIrql);
+
+	IoSetCancelRoutine(Irp, HookSSDTCancleRoutine);
+
+	if (Irp->Cancel){
+		if (IoSetCancelRoutine(Irp, NULL) != NULL){
+			KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrql);
+
+			ExFreePoolWithTag(pNotifyRecord, POOLTAG_HOOK_SSDT_01);
+
+			return STATUS_CANCELLED;
+		}
+	}
+
+	IoMarkIrpPending(Irp);
+	InsertTailList(&pDeviceExt->EventQueueHead, &pNotifyRecord->ListEntry);
+
+	pNotifyRecord->CancelRoutineFreeMemory = FALSE;
+
+	Irp->Tail.Overlay.DriverContext[3] = pNotifyRecord;
+
+	KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrql);
+
+	return STATUS_PENDING;
+}
+
+VOID HookSSDTCancleRoutine(
+	DEVICE_OBJECT *DeviceObject,
+	IRP *Irp)
+{
+	PDEVICE_EXTENSION pDeviceExt = NULL;
+	PNOTIFY_RECORD pNotifyRecord = NULL;
+	KIRQL oldIrql = 0;
+
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "cancling routine irp: %p\n", Irp);
+
+	pDeviceExt = DeviceObject->DeviceExtension;
+
+	IoReleaseCancelSpinLock(Irp->CancelIrql);
+
+	KeAcquireSpinLock(&pDeviceExt->QueueLock, &oldIrql);
+
+	pNotifyRecord = Irp->Tail.Overlay.DriverContext[3];
+	ASSERT(pNotifyRecord != NULL);
+
+	ASSERT(pNotifyRecord->Type == IRP_BASED);
+
+	RemoveEntryList(&pNotifyRecord->ListEntry);
+	pNotifyRecord->Message.PendingIrp = NULL;
+
+	if (pNotifyRecord->CancelRoutineFreeMemory == FALSE) {
+		//
+		// This is case 1 where the DPC is waiting to run.
+		//
+		InitializeListHead(&pNotifyRecord->ListEntry);
+	}
+	else {
+		//
+		// This is either 2 or 3.
+		//
+		ExFreePoolWithTag(pNotifyRecord, POOLTAG_HOOK_SSDT_01);
+		pNotifyRecord = NULL;
+	}
+
+	KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrql);
+
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "cancled routine irp: %p\n", Irp);
+
+	Irp->Tail.Overlay.DriverContext[3] = NULL;
+	Irp->IoStatus.Information = 0;
+	Irp->IoStatus.Status = STATUS_CANCELLED;
+	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "cancle routine irp: %p\n", Irp);
+	
+	return;
+}
 
 VOID HookSSDTUnload(
 	_In_ struct _DRIVER_OBJECT *DriverObject
@@ -302,10 +505,10 @@ VOID HookSSDTUnload(
 	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "Unload driver\n");
 
 	if (!IsListEmpty(&pDeviceExt->EventQueueHead)){
-		ASSERTMSG(L"Event Queue is not empty\n", FALSE);
+		ASSERTMSG("Event Queue is not empty\n", FALSE);
 	}
 
-	UnHookSSDT(HookedZwSetValueKey, oldZwSetValueKey, wpGlobles.callTable);
+	UnHookSSDT((BYTE *)HookedZwSetValueKey, (BYTE *)oldZwSetValueKey, wpGlobles.callTable);
 
 	PsSetCreateProcessNotifyRoutine(ProcNotifyRoutine, TRUE);
 
@@ -645,6 +848,9 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 		ExFreePoolWithTag(imgFileNameBuf, POOLTAG_HOOK_SSDT_01);
 		return STATUS_SUCCESS;
 	}
+	else {
+		return STATUS_UNSUCCESSFUL;
+	}
 
 	//LIST_ENTRY listNode = processBasicInfo.PebBaseAddress->LoaderData->InMemoryOrderModuleList;
 
@@ -677,7 +883,7 @@ IN BOOLEAN  Create
 	GetProcInfo(ParentId);
 	GetProcInfo(ProcessId);
 
-	return STATUS_SUCCESS;
+	return;
 }
 
 
