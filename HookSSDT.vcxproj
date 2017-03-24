@@ -281,10 +281,14 @@
     <FilesToPackage Include="@(Inf->'%(CopyOutput)')" Condition="'@(Inf)'!=''" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\..\..\Program Files (x86)\Windows Kits\8.1\Include\um\Psapi.h" />
+    <ClInclude Include="HookEvent.h" />
+    <ClInclude Include="HookOps.h" />
     <ClInclude Include="HookSSDT.h" />
+    <ClInclude Include="public.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="HookEvent.c" />
+    <ClCompile Include="HookOps.c" />
     <ClCompile Include="HookSSDT.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

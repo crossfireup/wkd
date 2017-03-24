@@ -27,12 +27,24 @@
     <ClInclude Include="HookSSDT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\..\Program Files (x86)\Windows Kits\8.1\Include\um\Psapi.h">
+    <ClInclude Include="HookOps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HookEvent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="public.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HookSSDT.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HookOps.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HookEvent.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -4,11 +4,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookSSDT", "HookSSDT.vcxproj", "{45546E9F-98CD-40FD-9713-4329080FE662}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5} = {4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookSSDT Package", "..\HookSSDT Package\HookSSDT Package.vcxproj", "{850B9870-BCBC-414B-A509-35A6DA7C9487}"
 	ProjectSection(ProjectDependencies) = postProject
 		{45546E9F-98CD-40FD-9713-4329080FE662} = {45546E9F-98CD-40FD-9713-4329080FE662}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookControl", "..\HookControl\HookControl.vcxproj", "{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -98,6 +103,42 @@ Global
 		{850B9870-BCBC-414B-A509-35A6DA7C9487}.Win8.1 Release|x64.ActiveCfg = Win8.1 Release|x64
 		{850B9870-BCBC-414B-A509-35A6DA7C9487}.Win8.1 Release|x64.Build.0 = Win8.1 Release|x64
 		{850B9870-BCBC-414B-A509-35A6DA7C9487}.Win8.1 Release|x64.Deploy.0 = Win8.1 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|Win32.ActiveCfg = Win7 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|Win32.Build.0 = Win7 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|Win32.Deploy.0 = Win7 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|x64.ActiveCfg = Win7 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|x64.Build.0 = Win7 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Debug|x64.Deploy.0 = Win7 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|Win32.ActiveCfg = Win7 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|Win32.Build.0 = Win7 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|Win32.Deploy.0 = Win7 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|x64.ActiveCfg = Win7 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|x64.Build.0 = Win7 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win7 Release|x64.Deploy.0 = Win7 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|Win32.ActiveCfg = Win8 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|Win32.Build.0 = Win8 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|Win32.Deploy.0 = Win8 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|x64.ActiveCfg = Win8 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|x64.Build.0 = Win8 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Debug|x64.Deploy.0 = Win8 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|Win32.ActiveCfg = Win8 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|Win32.Build.0 = Win8 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|Win32.Deploy.0 = Win8 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|x64.ActiveCfg = Win8 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|x64.Build.0 = Win8 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8 Release|x64.Deploy.0 = Win8 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|Win32.ActiveCfg = Win8.1 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|Win32.Build.0 = Win8.1 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|Win32.Deploy.0 = Win8.1 Debug|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|x64.ActiveCfg = Win8.1 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|x64.Build.0 = Win8.1 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Debug|x64.Deploy.0 = Win8.1 Debug|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|Win32.ActiveCfg = Win8.1 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|Win32.Build.0 = Win8.1 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|Win32.Deploy.0 = Win8.1 Release|Win32
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|x64.ActiveCfg = Win8.1 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|x64.Build.0 = Win8.1 Release|x64
+		{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}.Win8.1 Release|x64.Deploy.0 = Win8.1 Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
