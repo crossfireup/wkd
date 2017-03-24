@@ -9,6 +9,7 @@ extern "C" {
 
 
 #define BUF_SIZE  1024
+
 #ifdef DBG
 #define DRIVER_NAME "HookSSDT"
 #else
@@ -16,7 +17,8 @@ extern "C" {
 #endif
 
 	int MessageBoxPrintf(HWND hWnd, UINT uType, LPCSTR lpCaption, LPCSTR fmt, ...);
-
+	
+	void DisplayError(LPTSTR lpszFunction);
 
 #ifdef __cplusplus
 }

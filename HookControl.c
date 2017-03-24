@@ -4,6 +4,8 @@
  */
 #include <Windows.h>
 #include <tchar.h>
+#include <strsafe.h>
+#include <winioctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,23 +13,30 @@
 #include "resource.h"
 #include "HookControl.h"
 #include "ServiceControl.h"
-
+#include "..\HookSSDT\public.h"
 
 
 // The main window class name.
 static TCHAR szWindowClass[] = _T("win32app");
 
 // The string that appears in the application's title bar.
-static TCHAR szTitle[] = _T("Win32 Guided Tour Application");
+static TCHAR szTitle[] = _T("AppControl");
 
 static TCHAR szDriverLocation[1024];
 
-HINSTANCE hInst;
+static HINSTANCE hInst;
+
+REGISTER_EVENT registerEvt;
 
 // Forward declarations of functions included in this code module:
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 static int InitDriver();
+
+static BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode);
+
+static BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt);
+
 
 static int RegisterCls(HINSTANCE hInstance)
 {
@@ -39,12 +48,12 @@ static int RegisterCls(HINSTANCE hInstance)
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
+	wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = NULL; // MAKEINTRESOURCE(IDR_MENU);
 	wcex.lpszClassName = szWindowClass;
-	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
+	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
 	if (!RegisterClassEx(&wcex))
 	{
@@ -144,11 +153,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_FILE_INSTALLDRIVER:
 			InitDriver();
 			break;
+		
 		case IDM_FILE_REMOVEDRIVER:
 			ManageDriver(DRIVER_NAME,
 				szDriverLocation,
 				DRIVER_CTRL_REMOVE
 				);
+			break;
+
+		case IDM_FILE_STARTMON:
+			DriverIoControl(_T("SysMon"), (int)EVENT_BASED);
 			break;
 
 		case IDM_FILE_EXIT:
@@ -171,11 +185,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int InitDriver()
 {
-	HANDLE hDevice = NULL;
 
 	if (!SetupDriverName(szDriverLocation, sizeof(szDriverLocation))) {
 		return 0;
 	}
+
 	if (!ManageDriver(DRIVER_NAME,
 		szDriverLocation,
 		DRIVER_CTRL_INSTALL
@@ -191,11 +205,32 @@ int InitDriver()
 		return 1;
 	}
 
-	//
-	// Now open the device again.
-	//
-	hDevice = CreateFile(
-		"\\\\.\\Device\\SysMon",                     // lpFileName
+	return 1;
+}
+
+
+BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode)
+{
+	HANDLE hDevice = NULL;
+	TCHAR *devicePath = NULL;
+	HRESULT hResult = -1;
+	BOOLEAN bRet = TRUE;
+
+	devicePath = (TCHAR *)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, sizeof(TCHAR) * BUF_SIZE);
+	if (devicePath == NULL){
+		DisplayError(__FUNCTION__);
+		return FALSE;
+	}
+
+	hResult = StringCbPrintf(devicePath, sizeof(TCHAR) * BUF_SIZE, "\\\\.\\%s", driverName);
+	if (FAILED(hResult)){
+		DisplayError(_T("StringCbPrintf"));
+		bRet = FALSE;
+		goto err;
+	}
+
+	hDevice =  CreateFile(
+		devicePath,                     // lpFileName
 		GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
 		FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
 		NULL,                               // lpSecurityAttributes
@@ -203,11 +238,81 @@ int InitDriver()
 		0,                                  // dwFlagsAndAttributes
 		NULL                                // hTemplateFile
 		);
-
 	if (hDevice == INVALID_HANDLE_VALUE){
-		MessageBoxPrintf(NULL, MB_OK, "Error", "CreatFile Failed : %d\n", GetLastError());
-		return 0;
+		DisplayError(_T("CreateFile"));
+		bRet = FALSE;
+		goto err;
 	}
 
-	return 1;
+	switch (ctrlCode){
+	case EVENT_BASED:
+		GetDriverMsg(hDevice, registerEvt);
+		break;
+
+	default:
+		MessageBoxPrintf(NULL, MB_OK, "Error", "Control Code %x not implemented yet\n", ctrlCode);
+		bRet = FALSE;
+		break;
+	}
+
+err:
+	if (devicePath)
+		LocalFree(devicePath);
+	if (hDevice)
+		CloseHandle(hDevice);
+	return bRet;
+}
+
+BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
+{
+	BOOLEAN bRet = TRUE;
+	PTCHAR pOutBuf = NULL;
+
+	registerEvt.Type = EVENT_BASED;
+	registerEvt.hEvent = CreateEvent(NULL,
+		TRUE,
+		FALSE,
+#if DBG
+		"HookEvent"
+#else
+		NULL
+#endif
+		);
+
+
+	if (registerEvt.hEvent == NULL){
+		DisplayError(__FUNCTION__);
+		return FALSE;
+	}
+
+	pOutBuf = (PTCHAR)LocalAlloc(LPTR, sizeof(TCHAR) * BUF_SIZE);
+	if (pOutBuf == NULL){
+		DisplayError(__FUNCTION__);
+		bRet = FALSE;
+		goto err;
+	}
+
+	bRet = DeviceIoControl(hDevice,
+		IOCTL_REGISTER_EVENT,
+		&registerEvt,
+		sizeof(REGISTER_EVENT),
+		pOutBuf,
+		sizeof(TCHAR) * BUF_SIZE,
+		NULL,
+		NULL
+		);
+	if (bRet == FALSE){
+		DisplayError(_T("DeviceIoControl"));
+		goto err;
+	}
+
+	MessageBoxPrintf(NULL, MB_OK, "Information", _T("Recieve message from Driver: %s"), pOutBuf);
+
+err:
+	if (pOutBuf)
+		LocalFree(pOutBuf);
+
+	CloseHandle(registerEvt.hEvent);
+
+	return bRet;
 }

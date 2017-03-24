@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <tchar.h>
 #include <strsafe.h>
 
 #include "comm.h"
@@ -65,7 +66,7 @@ _In_ LPCTSTR      DriverName
 
 	if (schService == NULL) {
 
-		MessageBoxPrintf(NULL, MB_OK, "Error", "OpenService failed: %x", GetLastError());
+		DisplayError(_T("OpenService"));
 
 		return FALSE;
 	}
@@ -83,7 +84,7 @@ _In_ LPCTSTR      DriverName
 			retCode = TRUE;
 		}
 		else {
-			MessageBoxPrintf(NULL, MB_OK, "Error", "StartService failure: %x \n", dwErr);
+			DisplayError(_T("StartService"));
 		}
 	}
 
@@ -108,7 +109,7 @@ _In_ LPCTSTR      DriverName
 
 	if (schService == NULL) {
 
-		MessageBoxPrintf(NULL, MB_OK, "Error", "OpenService failed: %d", GetLastError());
+		DisplayError(_T("OpenService"));
 		return FALSE;
 	}
 
@@ -117,7 +118,7 @@ _In_ LPCTSTR      DriverName
 		&serviceStatus
 		);
 	if (!retCode) {
-		MessageBoxPrintf(NULL, MB_OK, "Error", "ControlService failed: %d", GetLastError());
+		DisplayError(_T("ControlServic"));
 	}
 
 	CloseServiceHandle(schService);
@@ -138,7 +139,7 @@ int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
 
 	if (NULL == hService){
 		dwErr = GetLastError();
-		MessageBoxPrintf(NULL, MB_OK, "Error", "OpenService error when Remove Driver: %x", dwErr);
+		DisplayError(_T("OpenService"));
 		return FALSE;
 	}
 
@@ -150,7 +151,7 @@ int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
 			MessageBoxPrintf(NULL, MB_OK, "Error", "The specified service has already been marked for deletion");
 		}
 		else {
-			MessageBoxPrintf(NULL, MB_OK, "Error", "DeleteService error when remove driver: %x", dwErr);
+			DisplayError(_T("DeleteService"));
 		}
 	}
 
@@ -172,8 +173,7 @@ int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
 		);
 
 	if (schSCManager == NULL){
-		dwErr = GetLastError();
-		MessageBoxPrintf(NULL, MB_OK, "Error", "OpenSCManager error: %x", dwErr);
+		DisplayError(_T("OpenSCManager"));
 		return FALSE;
 	}
 
@@ -183,10 +183,12 @@ int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
 			StartDriver(schSCManager, driverName);
 		}
 		break;
+
 	case DRIVER_CTRL_REMOVE:
 		StopDriver(schSCManager, driverName);
 		RemoveDriver(schSCManager, driverName);
 		break;
+
 	default:
 		MessageBoxPrintf(NULL, MB_OK, "Error", "ManageDriver error, not implemented: %x", ctrlCode);
 		retCode = FALSE;
@@ -200,11 +202,11 @@ int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
 
 BOOLEAN
 SetupDriverName(
-_Inout_updates_bytes_all_(BufferLength) PCHAR DriverLocation,
+_Inout_updates_bytes_all_(BufferLength) PTCHAR DriverLocation,
 _In_ ULONG BufferLength
 )
 {
-	HANDLE fileHandle;
+	HANDLE hDevice = NULL;
 	DWORD driverLocLen = 0;
 
 	//
@@ -217,7 +219,7 @@ _In_ ULONG BufferLength
 
 	if (driverLocLen == 0) {
 
-		MessageBoxPrintf(NULL, MB_OK, "Error", "GetCurrentDirectory failed!  Error = %d \n", GetLastError());
+		DisplayError(_T("GetCurrentDirectory"));
 
 		return FALSE;
 	}
@@ -225,7 +227,8 @@ _In_ ULONG BufferLength
 	//
 	// Setup path name to driver file.
 	//
-	if (FAILED(StringCbCat(DriverLocation, BufferLength, "\\"DRIVER_NAME".sys"))) {
+	if (FAILED(StringCchCat(DriverLocation, BufferLength, _T("\\"DRIVER_NAME".sys")))) {
+		DisplayError(_T("StringCbCat"));
 		return FALSE;
 	}
 
@@ -233,7 +236,7 @@ _In_ ULONG BufferLength
 	// Insure driver file is in the specified directory.
 	//
 
-	if ((fileHandle = CreateFile(DriverLocation,
+	if ((hDevice = CreateFile(DriverLocation,
 		GENERIC_READ,
 		0,
 		NULL,
@@ -241,13 +244,11 @@ _In_ ULONG BufferLength
 		FILE_ATTRIBUTE_NORMAL,
 		NULL
 		)) == INVALID_HANDLE_VALUE) {
-
-
 		MessageBoxPrintf(NULL, MB_OK, "Error", "%s.sys is not loaded.\n", DRIVER_NAME);
 		return FALSE;
 	}
 
-	CloseHandle(fileHandle);
+	CloseHandle(hDevice);
 
 	return TRUE;
 }   // SetupDriverName
