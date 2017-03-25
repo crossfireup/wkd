@@ -294,9 +294,11 @@ NTSTATUS HookSSDTDeviceControl(
 		case IRP_BASED:
 			ntStatus = RegisterIrpBasedNotification(DeviceObject, Irp);
 			break;
+
 		case EVENT_BASED:
 			ntStatus = RegisterEventBasedNotification(DeviceObject, Irp);
 			break;
+
 		default:
 			ASSERTMSG("\t Unknown notification type from user mode\n", FALSE);
 			ntStatus = STATUS_INVALID_PARAMETER;

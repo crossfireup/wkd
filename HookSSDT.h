@@ -50,11 +50,11 @@ extern "C" {
 #define HOOKSSDT_KDPRINT(_x_)
 #endif
 
-	typedef struct _PROC_INFO {
+	typedef struct _PROC_RECORD {
 		HANDLE Pid;
-		ANSI_STRING RegPath;
-		ANSI_STRING ImagePath;
-	} PROC_INFO;
+		UNICODE_STRING RegPath;
+		UNICODE_STRING ImagePath;
+	} PROC_RECORD;
 
 	typedef struct _DEVICE_EXTENSION {
 		PDEVICE_OBJECT  Self;
@@ -74,6 +74,7 @@ extern "C" {
 		PFILE_OBJECT    FileObject;
 		PDEVICE_EXTENSION   DeviceExtension;
 		BOOLEAN         CancelRoutineFreeMemory;
+		PROC_RECORD		ProcRecord;
 	} NOTIFY_RECORD, *PNOTIFY_RECORD;
 
 	typedef struct _FILE_CONTEXT{

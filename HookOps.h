@@ -3,6 +3,7 @@
 
 #include <ntddk.h>
 #include <ntstrsafe.h>
+#include "HookSSDT.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,9 +122,9 @@ extern "C" {
 	
 	/* process and register infomation handle */
 
-	NTSTATUS HookSSDTGetRegInfo(HANDLE keyHandle, UNICODE_STRING regValueName);
+	NTSTATUS GetRegInfo(HANDLE keyHandle, PUNICODE_STRING regValueName, PROC_RECORD *procRecord);
 
-	NTSTATUS GetProcInfo(HANDLE ProcessId);
+	NTSTATUS GetProcInfo(HANDLE ProcessId, PROC_RECORD *procRecord);
 
 	VOID ProcNotifyRoutine(
 		IN HANDLE  ParentId,

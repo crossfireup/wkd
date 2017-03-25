@@ -125,13 +125,16 @@ NTSTATUS HookedZwSetValueKey(
 	)
 {
 	NTSTATUS status;
+	UNICODE_STRING uniDeviceName = { 0 };
 
 	TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "HookedZwSetValueKey call to set registry value intercepted");
 
 	/* get information of process calling ZwSetValueKey */
-	GetProcInfo(PsGetCurrentProcessId());
+	RtlInitUnicodeString(&uniDeviceName, NT_DEVICE_NAME);
+	
+	SetNotifyEvent(uniDeviceName, PsGetCurrentProcessId(), KeyHandle, ValueName);
 
-	HookSSDTGetRegInfo(KeyHandle, *ValueName);
+	RtlFreeUnicodeString(&uniDeviceName);
 
 	/* log reg value type */
 	switch (Type)
@@ -168,7 +171,7 @@ NTSTATUS HookedZwSetValueKey(
 }
 
 
-NTSTATUS HookSSDTGetRegInfo(HANDLE keyHandle, UNICODE_STRING regValueName)
+NTSTATUS GetRegInfo(HANDLE keyHandle, PUNICODE_STRING regValueName, PROC_RECORD *procRecord)
 {
 	NTSTATUS status;
 	ANSI_STRING ansiValueName = { 0 };
@@ -213,7 +216,6 @@ NTSTATUS HookSSDTGetRegInfo(HANDLE keyHandle, UNICODE_STRING regValueName)
 
 		if (NT_SUCCESS(status)) {
 			WCHAR *regPath;
-			UNICODE_STRING uniRegPath = { 0 };
 			ANSI_STRING ansiRegPath = { 0 };
 
 			regPath = ExAllocatePoolWithTag(NonPagedPool, (pKeyBasicInfo->NameLength + 1) * sizeof(WCHAR), POOLTAG_HOOK_SSDT_02);
@@ -224,10 +226,11 @@ NTSTATUS HookSSDTGetRegInfo(HANDLE keyHandle, UNICODE_STRING regValueName)
 			RtlZeroMemory(regPath, pKeyBasicInfo->NameLength + 1);
 			RtlCopyMemory(regPath, pKeyBasicInfo->Name, pKeyBasicInfo->NameLength);
 
-			RtlInitUnicodeString(&uniRegPath, regPath);
-			RtlUnicodeStringToAnsiString(&ansiRegPath, &uniRegPath, TRUE);
+			RtlInitUnicodeString(&procRecord->RegPath, regPath);
+			RtlUnicodeStringToAnsiString(&ansiRegPath, &procRecord->RegPath, TRUE);
 			TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "HookedZwSetValueKey :\t RegPath=%s, length=%d\n",
 				ansiRegPath.Buffer, pKeyBasicInfo->NameLength);
+
 			ExFreePoolWithTag(pKeyBasicInfo, POOLTAG_HOOK_SSDT_01);
 			ExFreePoolWithTag(regPath, POOLTAG_HOOK_SSDT_02);
 			RtlFreeAnsiString(&ansiRegPath);
@@ -258,7 +261,7 @@ typedef NTSTATUS(*ZwQueryInformationProcessPtr) (
 
 
 
-NTSTATUS GetProcInfo(HANDLE ProcessId)
+NTSTATUS GetProcInfo(HANDLE ProcessId, PROC_RECORD *ProcRecrod)
 {
 	NTSTATUS status;
 	HANDLE hProcess;
@@ -303,6 +306,7 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 	RtlZeroMemory(imgFileNameBuf, nameLen);
+
 	status = ZwQueryInformationProcess(hProcess,
 		ProcessImageFileName,
 		imgFileNameBuf,
@@ -321,8 +325,8 @@ NTSTATUS GetProcInfo(HANDLE ProcessId)
 		ANSI_STRING imgFileName;
 		RtlUnicodeStringToAnsiString(&imgFileName, pUniImgFileName, TRUE);
 		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "PID: %d, ImageFilePath: %s\n", ProcessId, imgFileName.Buffer);
+		ProcRecrod->ImagePath = *(PUNICODE_STRING)imgFileNameBuf;
 		RtlFreeAnsiString(&imgFileName);
-		ExFreePoolWithTag(imgFileNameBuf, POOLTAG_HOOK_SSDT_01);
 		return STATUS_SUCCESS;
 	}
 	else {
@@ -357,8 +361,6 @@ IN BOOLEAN  Create
 	else {
 		TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "new Process exit, PPID:%d, PID:%d\n", ParentId, ProcessId);
 	}
-	GetProcInfo(ParentId);
-	GetProcInfo(ProcessId);
 
 	return;
 }
