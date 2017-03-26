@@ -11,7 +11,7 @@ extern "C" {
 
 	DRIVER_DISPATCH RegisterIrpBasedNotification;
 
-	NTSTATUS SetNotifyEvent(UNICODE_STRING deviceName, HANDLE Pid, HANDLE keyHandle, PUNICODE_STRING regValueName);
+	NTSTATUS SetNotifyEvent(PUNICODE_STRING deviceName, HANDLE Pid, HANDLE keyHandle, PUNICODE_STRING regValueName);
 
 #ifdef __cplusplus
 }

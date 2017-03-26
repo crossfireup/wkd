@@ -113,37 +113,43 @@ NTSTATUS RegisterIrpBasedNotification(
 	return STATUS_PENDING;
 }
 
-NTSTATUS SetNotifyEvent(UNICODE_STRING deviceName, HANDLE Pid, HANDLE keyHandle, PUNICODE_STRING regValueName)
+NTSTATUS SetNotifyEvent(PUNICODE_STRING deviceName, HANDLE Pid, HANDLE keyHandle, PUNICODE_STRING regValueName)
 {
 	NTSTATUS ntStatus = STATUS_SUCCESS;
-	DEVICE_OBJECT deviceObj = { 0 };
+	PDEVICE_OBJECT pDeviceObj = NULL;
+	PFILE_OBJECT pFileObj = NULL;
 	PDEVICE_EXTENSION pDeviceExt = NULL;
-	PFILE_CONTEXT pFileCtx = NULL;
 	PNOTIFY_RECORD pNotifyRecord = { 0 };
 	KIRQL oldIrql = 0;
 	PLIST_ENTRY firstEntry = NULL;
 
-	ntStatus = IoGetDeviceObjectPointer(&deviceName, FILE_ALL_ACCESS, NULL, &deviceObj);
+	PAGED_CODE();
+
+	ntStatus = IoGetDeviceObjectPointer(deviceName, 
+		FILE_READ_ACCESS | FILE_WRITE_ACCESS, 
+		&pFileObj, 
+		&pDeviceObj);
 
 	if (!NT_SUCCESS(ntStatus)){
 		TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "IoGetDeviceObjectPointer failed, errCode: %x\n", ntStatus);
-		ntStatus = STATUS_UNSUCCESSFUL;
-		goto err;
+		return ntStatus;
 	}
 
-	pDeviceExt = (PDEVICE_EXTENSION)deviceObj.DeviceExtension;
+	pDeviceExt = (PDEVICE_EXTENSION)pDeviceObj->DeviceExtension;
 
-	KeAcquireSpinLock(pDeviceExt->QueueLock, &oldIrql);
+	ASSERT(pDeviceExt != NULL);
+
+	KeAcquireSpinLock(&pDeviceExt->QueueLock, &oldIrql);
 
 	if (IsListEmpty(&pDeviceExt->EventQueueHead) == TRUE){
 		ntStatus = STATUS_UNSUCCESSFUL;
-		KeReleaseSpinLock(pDeviceExt->QueueLock, &oldIrql);
+		KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrql);
 		goto err;
 	}
 
 	firstEntry = RemoveHeadList(&pDeviceExt->EventQueueHead);
 
-	KeReleaseSpinLock(pDeviceExt->QueueLock, &oldIrql);
+	KeReleaseSpinLock(&pDeviceExt->QueueLock, oldIrql);
 
 	pNotifyRecord = (PNOTIFY_RECORD)CONTAINING_RECORD(firstEntry, NOTIFY_RECORD, ListEntry);
 
@@ -159,15 +165,22 @@ NTSTATUS SetNotifyEvent(UNICODE_STRING deviceName, HANDLE Pid, HANDLE keyHandle,
 		goto err;
 	}
 
-	GetRegInfo(keyHandle, regValueName, &pNotifyRecord->ProcRecord);
+	ntStatus = GetRegInfo(keyHandle, regValueName, &pNotifyRecord->ProcRecord);
 
 
 err:
-	ObDereferenceObject(&deviceObj);
+	ObDereferenceObject(pDeviceObj);
+	ObDereferenceObject(pFileObj);	
 
 	if (pNotifyRecord != NULL){
 		if (!NT_SUCCESS(ntStatus)){
 			KeResetEvent(pNotifyRecord->Message.Event);
+
+			if (pNotifyRecord->ProcRecord.ImagePath.Buffer != NULL)
+				RtlFreeUnicodeString(&pNotifyRecord->ProcRecord.ImagePath);
+
+			if (pNotifyRecord->ProcRecord.RegPath.Buffer != NULL)
+				RtlFreeUnicodeString(&pNotifyRecord->ProcRecord.RegPath);
 		}
 		else{
 			KeSetEvent(pNotifyRecord->Message.Event, 0, FALSE);

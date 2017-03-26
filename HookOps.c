@@ -131,10 +131,9 @@ NTSTATUS HookedZwSetValueKey(
 
 	/* get information of process calling ZwSetValueKey */
 	RtlInitUnicodeString(&uniDeviceName, NT_DEVICE_NAME);
-	
-	SetNotifyEvent(uniDeviceName, PsGetCurrentProcessId(), KeyHandle, ValueName);
 
-	RtlFreeUnicodeString(&uniDeviceName);
+	SetNotifyEvent(&uniDeviceName, PsGetCurrentProcessId(), KeyHandle, ValueName);
+	
 
 	/* log reg value type */
 	switch (Type)
@@ -179,7 +178,7 @@ NTSTATUS GetRegInfo(HANDLE keyHandle, PUNICODE_STRING regValueName, PROC_RECORD 
 	PAGED_CODE();
 
 	/* get regpath info */
-	status = RtlUnicodeStringToAnsiString(&ansiValueName, &regValueName, TRUE);
+	status = RtlUnicodeStringToAnsiString(&ansiValueName, regValueName, TRUE);
 	if (NT_SUCCESS(status)){
 		ULONG keyInfoLength = 0L;
 		PKEY_BASIC_INFORMATION pKeyBasicInfo = NULL;
