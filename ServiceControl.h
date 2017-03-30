@@ -14,7 +14,11 @@ extern "C" {
 
 	int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode);
 
-	BOOLEAN SetupDriverName(PCHAR DriverLocation, ULONG BufferLength);
+	BOOLEAN
+		SetupDriverName(
+		_Inout_updates_bytes_all_(BufferLength) PTCHAR DriverLocation,
+		_In_ ULONG BufferLength
+		);
 
 #ifdef __cplusplus
 }

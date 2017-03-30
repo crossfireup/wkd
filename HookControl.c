@@ -11,9 +11,12 @@
 
 #include "comm.h"
 #include "resource.h"
+#include "..\HookSSDT\public.h"
 #include "HookControl.h"
 #include "ServiceControl.h"
-#include "..\HookSSDT\public.h"
+#include "ProcessUtil.h"
+#include "PEAnalyze.h"
+
 
 
 // The main window class name.
@@ -31,12 +34,24 @@ REGISTER_EVENT registerEvt;
 // Forward declarations of functions included in this code module:
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-static int InitDriver();
+static BOOL InitDriver();
 
-static BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode);
+static BOOL DriverIoControl(TCHAR *driverName, int ctrlCode);
 
-static BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt);
+static BOOL GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt);
 
+/* Dialog procedure for pe analyze */
+INT_PTR CALLBACK DialogProcToolPE(
+	_In_ HWND   hDlg,
+	_In_ UINT   uMsg,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam
+	);
+
+INT_PTR CALLBACK AboutDlgProc(HWND hDlg,
+	UINT uMsg,
+	WPARAM wParam,
+	LPARAM lParam);
 
 static int RegisterCls(HINSTANCE hInstance)
 {
@@ -87,7 +102,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_MENU));
 
 	if (hMenu == NULL){
-		MessageBoxPrintf(NULL, MB_OK, "Error", "Load Menu error: %x\n", GetLastError());
+		MessageBoxPrintf(NULL, MB_OK, "Error", "Load Menu outor: %x\n", GetLastError());
 		return EXIT_FAILURE;
 	}
 
@@ -153,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_FILE_INSTALLDRIVER:
 			InitDriver();
 			break;
-		
+
 		case IDM_FILE_REMOVEDRIVER:
 			ManageDriver(DRIVER_NAME,
 				szDriverLocation,
@@ -162,12 +177,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_FILE_STARTMON:
-			DriverIoControl(_T("SysMon"), (int)EVENT_BASED);
+			DriverIoControl(_T("SysMon"), IOCTL_REGISTER_EVENT);
+			break;
+
+		case IDM_TOOLS_PEANALYZE:
+			if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
+				DWORD dwError = GetLastError();
+				DisplayError(_T(__FUNCTION__"DialogBox"));
+			}
 			break;
 
 		case IDM_FILE_EXIT:
 			PostQuitMessage(0);
 			break;
+
+		case IDM_HELP_ABOUT:
+			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hWnd, AboutDlgProc);
+			break;
+
 		default:
 			break;
 		}
@@ -183,11 +210,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-int InitDriver()
+BOOL InitDriver()
 {
 
 	if (!SetupDriverName(szDriverLocation, sizeof(szDriverLocation))) {
-		return 0;
+		return FALSE;
 	}
 
 	if (!ManageDriver(DRIVER_NAME,
@@ -202,19 +229,19 @@ int InitDriver()
 			DRIVER_CTRL_REMOVE
 			);
 
-		return 1;
+		return TRUE;
 	}
 
-	return 1;
+	return TRUE;
 }
 
 
-BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode)
+BOOL DriverIoControl(TCHAR *driverName, int ctrlCode)
 {
 	HANDLE hDevice = NULL;
 	TCHAR *devicePath = NULL;
 	HRESULT hResult = -1;
-	BOOLEAN bRet = TRUE;
+	BOOL bRet = TRUE;
 
 	devicePath = (TCHAR *)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, sizeof(TCHAR) * BUF_SIZE);
 	if (devicePath == NULL){
@@ -226,10 +253,10 @@ BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode)
 	if (FAILED(hResult)){
 		DisplayError(_T("StringCbPrintf"));
 		bRet = FALSE;
-		goto err;
+		goto out;
 	}
 
-	hDevice =  CreateFile(
+	hDevice = CreateFile(
 		devicePath,                     // lpFileName
 		GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
 		FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
@@ -239,13 +266,13 @@ BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode)
 		NULL                                // hTemplateFile
 		);
 	if (hDevice == INVALID_HANDLE_VALUE){
-		DisplayError(_T("CreateFile"));
+		DisplayError(_T(__FUNCTION__"#CreateFile"));
 		bRet = FALSE;
-		goto err;
+		goto out;
 	}
 
 	switch (ctrlCode){
-	case EVENT_BASED:
+	case IOCTL_REGISTER_EVENT:
 		GetDriverMsg(hDevice, registerEvt);
 		break;
 
@@ -255,7 +282,7 @@ BOOLEAN DriverIoControl(TCHAR *driverName, int ctrlCode)
 		break;
 	}
 
-err:
+out:
 	if (devicePath)
 		LocalFree(devicePath);
 	if (hDevice)
@@ -263,9 +290,9 @@ err:
 	return bRet;
 }
 
-BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
+BOOL GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
 {
-	BOOLEAN bRet = TRUE;
+	BOOL bRet = TRUE;
 	PTCHAR pOutBuf = NULL;
 
 	registerEvt.Type = EVENT_BASED;
@@ -279,7 +306,6 @@ BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
 #endif
 		);
 
-
 	if (registerEvt.hEvent == NULL){
 		DisplayError(__FUNCTION__);
 		return FALSE;
@@ -287,9 +313,9 @@ BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
 
 	pOutBuf = (PTCHAR)LocalAlloc(LPTR, sizeof(TCHAR) * BUF_SIZE);
 	if (pOutBuf == NULL){
-		DisplayError(__FUNCTION__);
+		DisplayError(_T("LocalAlloc"));
 		bRet = FALSE;
-		goto err;
+		goto out;
 	}
 
 	bRet = DeviceIoControl(hDevice,
@@ -303,16 +329,123 @@ BOOLEAN GetDriverMsg(HANDLE hDevice, REGISTER_EVENT registerEvt)
 		);
 	if (bRet == FALSE){
 		DisplayError(_T("DeviceIoControl"));
-		goto err;
+		goto out;
 	}
+
+	WaitForSingleObject(registerEvt.hEvent, INFINITE);
 
 	MessageBoxPrintf(NULL, MB_OK, "Information", _T("Recieve message from Driver: %s"), pOutBuf);
 
-err:
+out:
 	if (pOutBuf)
 		LocalFree(pOutBuf);
 
 	CloseHandle(registerEvt.hEvent);
 
 	return bRet;
+}
+
+INT_PTR CALLBACK AboutDlgProc(HWND hDlg,
+	UINT uMsg,
+	WPARAM wParam,
+	LPARAM lParam)
+{
+	switch (uMsg){
+	case WM_INITDIALOG:
+	{
+		LPTSTR lpBuffer = NULL;
+
+		lpBuffer = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512*sizeof(TCHAR));
+		if (lpBuffer == NULL){
+			DisplayError(_T(__FUNCTION__"#LocalAlloc"));
+			return FALSE;
+		}
+		LoadString(hInst, IDS_VERSION, lpBuffer, 512);
+		SetDlgItemText(hDlg, IDC_STATIC_VERSION, lpBuffer);
+		LocalFree(lpBuffer);
+		return TRUE;
+	}
+	case WM_COMMAND:
+	{
+		switch (LOWORD(wParam)){
+		case IDOK:
+		case IDCANCEL:
+			EndDialog(hDlg, 0);
+			return TRUE;
+		}
+		break;
+	}
+	break;
+	}
+	
+	return FALSE;
+}
+
+INT_PTR CALLBACK DialogProcToolPE(
+	_In_ HWND   hDlg,
+	_In_ UINT   uMsg,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam
+	)
+{
+	static LPTSTR lpBuffer;
+	static const nMaxCount = 512 * sizeof(TCHAR);;
+
+	switch (uMsg){
+	case WM_INITDIALOG:
+
+		return TRUE;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case IDOK:
+		case IDC_BT_PN_OK:
+		{
+			DWORD pid;
+			PVOID pImageBase;
+
+			lpBuffer = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
+			if (lpBuffer == NULL){
+				DisplayError(_T(__FUNCTION__"LocalAlloc"));
+				return FALSE;
+			}
+			memset(lpBuffer, '\0', nMaxCount);
+
+			if (!GetDlgItemText(hDlg, IDC_EDIT_PROCNAME, lpBuffer, nMaxCount))
+			{
+				DisplayError(_T(__FUNCTION__"GetDlgItemText"));
+				LocalFree(lpBuffer);
+				return FALSE;
+			}
+
+			if (!GetPidByName(lpBuffer, &pid)){
+				LocalFree(lpBuffer);
+				return FALSE;
+			}
+
+			memset(lpBuffer, '\0', nMaxCount);
+			if (!GetProcessImageName(pid, lpBuffer)){
+				LocalFree(lpBuffer);
+				return FALSE;
+			}
+
+			pImageBase = GetImageMapView(lpBuffer);
+			if (!pImageBase){
+				LocalFree(lpBuffer);
+				return FALSE;
+			}
+
+			GetDosHeader(pImageBase);
+			LocalFree(lpBuffer);
+			return TRUE;
+		}
+
+		case IDCANCEL:
+		case IDC_BT_PN_CANCEL:
+			EndDialog(hDlg, 0);
+			return TRUE;
+		}
+	}
+	return FALSE;
 }

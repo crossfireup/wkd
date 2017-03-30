@@ -53,12 +53,16 @@
   <ItemGroup>
     <ClInclude Include="comm.h" />
     <ClInclude Include="HookControl.h" />
+    <ClInclude Include="PEAnalyze.h" />
+    <ClInclude Include="ProcessUtil.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ServiceControl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="comm.c" />
     <ClCompile Include="HookControl.c" />
+    <ClCompile Include="PEAnalyze.c" />
+    <ClCompile Include="ProcessUtil.c" />
     <ClCompile Include="ServiceControl.c" />
   </ItemGroup>
   <ItemGroup>

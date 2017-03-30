@@ -39,7 +39,7 @@ int InstallDriver(SC_HANDLE schSCManager,
 			return FALSE;
 		}
 		else {
-			MessageBoxPrintf(NULL, MB_OK, "Error", "Driver Install error:%x", dwErr);
+			DisplayError(_T("CreateService"));
 			return FALSE;
 		}
 	}
@@ -138,7 +138,6 @@ int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
 		SERVICE_STOP | DELETE);
 
 	if (NULL == hService){
-		dwErr = GetLastError();
 		DisplayError(_T("OpenService"));
 		return FALSE;
 	}

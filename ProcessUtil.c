@@ -1,0 +1,73 @@
+#include <Windows.h>
+#include <tchar.h>
+#include <Shlwapi.h>
+#include <Psapi.h>
+#include <TlHelp32.h>
+
+#include "comm.h"
+
+
+BOOL GetProcessImageName(DWORD  pid, LPTSTR lpFilename)
+{
+	HANDLE	hProcess = NULL;
+	DWORD	dwSize = 1024 * sizeof(TCHAR);
+
+	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+
+	if (hProcess == NULL){
+		DisplayError(_T(__FUNCTION__"OpenProcess"));
+		return FALSE;
+	}
+
+	if (lpFilename == NULL){
+		DisplayError(_T(__FUNCTION__"LocalAlloc"));
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+
+	if (!QueryFullProcessImageName(hProcess, 0, lpFilename, &dwSize)){
+		DisplayError(_T(__FUNCTION__"GetModuleFileNameEx"));
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+	
+	return TRUE;
+}
+
+BOOL GetPidByName(LPCTSTR lpProcName, DWORD *pid)
+{
+	HANDLE hProcessSnap;
+	HANDLE hProcess;
+	PROCESSENTRY32 pe32;
+	DWORD dwPriorityClass;
+	DWORD dwRet = TRUE;
+
+	if (lpProcName == NULL){
+		return FALSE;
+	}
+
+	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+	if (hProcessSnap == INVALID_HANDLE_VALUE)
+	{
+		DisplayError(_T(__FUNCTION__"CreateToolhelp32Snapshot (of processes)"));
+		return FALSE;
+	}
+
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+
+	if (!Process32First(hProcessSnap, &pe32)){
+		DisplayError(_T(__FUNCTION__"Process32First"));
+		CloseHandle(hProcessSnap);
+		return FALSE;
+	}
+
+	do {
+		if (StrStr(pe32.szExeFile, lpProcName)){
+			*pid = pe32.th32ProcessID;
+			return TRUE;
+		}
+	} while (Process32Next(hProcessSnap, &pe32));
+
+	return FALSE;
+}
