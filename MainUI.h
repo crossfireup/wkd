@@ -1,5 +1,5 @@
-#ifndef MAINUI_H
-#define MAINUI_H
+#ifndef _MAINUI_H
+#define _MAINUI_H
 
 #include <Windows.h>
 
@@ -27,7 +27,7 @@ private:
 
 	void OnFileExit(HWND hWnd);
 
-	void OnComand(HWND hWnd);	 
+	void OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify);	 
 
 	INT_PTR CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg,	WPARAM wParam, LPARAM lParam);
 
@@ -36,4 +36,4 @@ private:
 
 };
 
-#endif MAINUI_H
+#endif _MAINUI_H

@@ -4,14 +4,22 @@
 
 #include "comm.h"
 #include "resource.h"
+#include "ServiceBase.h"
+#include "HookService.h"
+#include "ServiceManager.h"
 #include "HookControl.h"
-#include "ServiceControl.h"
 #include "..\HookSSDT\public.h"
 #include "PEAnalyze.h"
 #include "ProcessUtil.h"
 #include "MainUI.h"
 
+struct AppData_ {
+	ServiceManager *serviceManager;
+	ServiceBase	*service;
+	HookControl *hookCtrl;
+};
 
+static struct AppData_ MainUIAppData;
 
 // The main window class name.
 static TCHAR szWindowClass[] = _T("win32app");
@@ -23,17 +31,18 @@ static HINSTANCE hInst;
 
 REGISTER_EVENT registerEvt;
 
-int WINAPI WinMain(HINSTANCE hInstance,
+int WINAPI _tWinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
-	LPSTR lpCmdLine,
+	LPTSTR lpCmdLine,
 	int nCmdShow)
 {
-
-
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
 	hInst = hInstance; // Store instance handle in our global variable
+
+	MainUI mainUI;
+	mainUI.CreateMainUIAndLoop(hInstance, lpCmdLine, nCmdShow, NULL);
 }
 
 
@@ -56,7 +65,7 @@ UINT MainUI::CreateMainUIAndLoop(HINSTANCE hInstance, wchar_t *cmdline, int nCmd
 	HMENU hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU));
 
 	if (NULL == hMenu){
-		MessageBoxPrintf(NULL, MB_OK, "Error", "Load Menu outor: %x\n", GetLastError());
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"Load Menu error: %08lx\n", GetLastError());
 		return FALSE;
 	}
 
@@ -126,6 +135,83 @@ int MainUI::RegisterClass(HINSTANCE hInstance)
 	return TRUE;
 }
 
+MainUI* MainUI::FromWindow(HWND hMainWnd)
+{
+
+}
+
+bool MainUI::OnCreate(HWND hWnd, LPCREATESTRUCT)
+{
+	MainUIAppData.service = &HookService(DRIVER_NAME);
+
+	MainUIAppData.serviceManager = &ServiceManager(DRIVER_NAME, DRIVER_NAME);
+	
+	MainUIAppData.hookCtrl = &HookControl(*MainUIAppData.service, *MainUIAppData.serviceManager);
+
+	SetWindowLongPtr(hWnd, GWL_USERDATA, reinterpret_cast<INT_PTR>(&MainUIAppData));
+}
+
+void MainUI::OnDestroy(HWND hWnd)
+{
+
+}
+
+void MainUI::OnSize(HWND hWnd)
+{
+
+}
+
+void MainUI::OnPaint(HWND hWnd)
+{
+
+}
+
+void MainUI::OnFileExit(HWND hWnd)
+{
+
+}
+
+void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
+{
+	//HMENU hMenu = GetMenu(hWnd);
+
+	switch (id){
+	case IDM_FILE_INSTALLDRIVER:
+		MainUIAppData.hookCtrl->InitDriver();
+		break;
+
+	case IDM_FILE_REMOVEDRIVER:
+		MainUIAppData.serviceManager->ServiceControl(
+			SERVICE_CTRL_REMOVE
+			);
+		break;
+
+	case IDM_FILE_STARTMON:
+		MainUIAppData.hookCtrl->DriverIoControl(IOCTL_REGISTER_EVENT);
+		break;
+
+	case IDM_TOOLS_PEANALYZE:
+		if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
+			DWORD dwError = GetLastError();
+			DisplayError(_T(__FUNCTION__"DialogBox"));
+		}
+		break;
+
+	case IDM_FILE_EXIT:
+		PostQuitMessage(0);
+		break;
+
+	case IDM_HELP_ABOUT:
+		DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hWnd, AboutDlgProc);
+		break;
+
+	default:
+		break;
+	}
+	break;
+}
+
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -135,7 +221,7 @@ int MainUI::RegisterClass(HINSTANCE hInstance)
 //  WM_DESTROY  - post a quit message and return
 //
 //
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK MainUI::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HMENU hMenu;
 
@@ -146,43 +232,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_COMMAND:
-		hMenu = GetMenu(hWnd);
-
-		switch (LOWORD(wParam)){
-		case IDM_FILE_INSTALLDRIVER:
-			InitDriver();
-			break;
-
-		case IDM_FILE_REMOVEDRIVER:
-			ManageDriver(DRIVER_NAME,
-				szDriverLocation,
-				DRIVER_CTRL_REMOVE
-				);
-			break;
-
-		case IDM_FILE_STARTMON:
-			DriverIoControl(_T("SysMon"), IOCTL_REGISTER_EVENT);
-			break;
-
-		case IDM_TOOLS_PEANALYZE:
-			if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
-				DWORD dwError = GetLastError();
-				DisplayError(_T(__FUNCTION__"DialogBox"));
-			}
-			break;
-
-		case IDM_FILE_EXIT:
-			PostQuitMessage(0);
-			break;
-
-		case IDM_HELP_ABOUT:
-			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hWnd, AboutDlgProc);
-			break;
-
-		default:
-			break;
-		}
-		break;
+		
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
@@ -195,7 +245,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-INT_PTR CALLBACK AboutDlgProc(HWND hDlg,
+INT_PTR CALLBACK MainUI::AboutDlgProc(HWND hDlg,
 	UINT uMsg,
 	WPARAM wParam,
 	LPARAM lParam)
@@ -205,7 +255,7 @@ INT_PTR CALLBACK AboutDlgProc(HWND hDlg,
 	{
 		LPTSTR lpBuffer = NULL;
 
-		lpBuffer = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512 * sizeof(TCHAR));
+		lpBuffer = (LPTSTR)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512 * sizeof(TCHAR));
 		if (lpBuffer == NULL){
 			DisplayError(_T(__FUNCTION__"#LocalAlloc"));
 			return FALSE;
@@ -231,7 +281,7 @@ INT_PTR CALLBACK AboutDlgProc(HWND hDlg,
 	return FALSE;
 }
 
-INT_PTR CALLBACK DialogProcToolPE(
+INT_PTR CALLBACK MainUI::DialogProcToolPE(
 	_In_ HWND   hDlg,
 	_In_ UINT   uMsg,
 	_In_ WPARAM wParam,
@@ -239,7 +289,7 @@ INT_PTR CALLBACK DialogProcToolPE(
 	)
 {
 	static LPTSTR lpBuffer;
-	static const nMaxCount = 512 * sizeof(TCHAR);;
+	static const int nMaxCount = 512 * sizeof(TCHAR);;
 
 	switch (uMsg){
 	case WM_INITDIALOG:
@@ -255,7 +305,7 @@ INT_PTR CALLBACK DialogProcToolPE(
 			DWORD pid;
 			PVOID pImageBase;
 
-			lpBuffer = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
+			lpBuffer = (LPWSTR)(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
 			if (lpBuffer == NULL){
 				DisplayError(_T(__FUNCTION__"LocalAlloc"));
 				return FALSE;
