@@ -53,17 +53,23 @@
   <ItemGroup>
     <ClInclude Include="comm.h" />
     <ClInclude Include="HookControl.h" />
+    <ClInclude Include="HookService.h" />
+    <ClInclude Include="MainUI.h" />
     <ClInclude Include="PEAnalyze.h" />
     <ClInclude Include="ProcessUtil.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ServiceControl.h" />
+    <ClInclude Include="ServiceBase.h" />
+    <ClInclude Include="ServiceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="comm.c" />
-    <ClCompile Include="HookControl.c" />
-    <ClCompile Include="PEAnalyze.c" />
+    <ClCompile Include="HookControl.cpp" />
+    <ClCompile Include="HookService.cpp" />
+    <ClCompile Include="MainUI.cpp" />
+    <ClCompile Include="PEAnalyze.cpp" />
     <ClCompile Include="ProcessUtil.c" />
-    <ClCompile Include="ServiceControl.c" />
+    <ClCompile Include="ServiceBase.cpp" />
+    <ClCompile Include="ServiceManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
@@ -108,6 +114,7 @@
     <PlatformToolset>WindowsApplicationForDrivers8.1</PlatformToolset>
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|Win32'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>

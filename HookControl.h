@@ -1,13 +1,29 @@
 #ifndef _HOOKCONTROL_H
 #define _HOOKCONTROL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <windows.h>
+#include "ServiceBase.h"
+#include "ServiceManager.h"
 
+class HookControl {
+public:
+	HookControl(ServiceBase& service, ServiceManager& serviceManager);
 
-#ifdef __cplusplus
+	~HookControl();
+
+	BOOL InitDriver();
+
+	BOOL DriverIoControl(int ctrlCode);
+
+	BOOL GetDriverMsg();
+
+private:
+	ServiceManager& serviceManager_;
+	HookService& service_;
+	HANDLE hDevice_;
+	REGISTER_EVENT registerEvt_;
+
+	//HookControl();
 }
-#endif
 
 #endif /* _HOOKCONTROL_H */
