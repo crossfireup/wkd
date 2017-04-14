@@ -15,18 +15,18 @@ BOOL GetProcessImageName(DWORD  pid, LPTSTR lpFilename)
 	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 
 	if (hProcess == NULL){
-		DisplayError(_T(__FUNCTION__"OpenProcess"));
+		DisplayError(_T(__FUNCTION__)_T("OpenProcess"));
 		return FALSE;
 	}
 
 	if (lpFilename == NULL){
-		DisplayError(_T(__FUNCTION__"LocalAlloc"));
+		DisplayError(_T(__FUNCTION__)_T("LocalAlloc"));
 		CloseHandle(hProcess);
 		return FALSE;
 	}
 
 	if (!QueryFullProcessImageName(hProcess, 0, lpFilename, &dwSize)){
-		DisplayError(_T(__FUNCTION__"GetModuleFileNameEx"));
+		DisplayError(_T(__FUNCTION__)_T("GetModuleFileNameEx"));
 		CloseHandle(hProcess);
 		return FALSE;
 	}
@@ -50,14 +50,14 @@ BOOL GetPidByName(LPCTSTR lpProcName, DWORD *pid)
 
 	if (hProcessSnap == INVALID_HANDLE_VALUE)
 	{
-		DisplayError(_T(__FUNCTION__"CreateToolhelp32Snapshot (of processes)"));
+		DisplayError(_T(__FUNCTION__)_T("CreateToolhelp32Snapshot (of processes)"));
 		return FALSE;
 	}
 
 	pe32.dwSize = sizeof(PROCESSENTRY32);
 
 	if (!Process32First(hProcessSnap, &pe32)){
-		DisplayError(_T(__FUNCTION__"Process32First"));
+		DisplayError(_T(__FUNCTION__)_T("Process32First"));
 		CloseHandle(hProcessSnap);
 		return FALSE;
 	}
