@@ -26,7 +26,7 @@ int MessageBoxPrintf(HWND hWnd, UINT uType, LPCTSTR lpCaption, LPCTSTR fmt, ...)
 	return nSize;
 }
 
-void DisplayError(LPTSTR lpszFunction)
+void DisplayError(LPCTSTR lpszFunction)
 // Routine Description:
 // Retrieve and output the system error message for the last-error code
 {
@@ -45,7 +45,7 @@ void DisplayError(LPTSTR lpszFunction)
 		(LPTSTR)&lpMsgBuf,
 		0,
 		NULL) == 0){
-		MessageBoxPrintf(NULL, MB_OK, "Error", "LocalAlloc failed: %x\n", GetLastError());
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"LocalAlloc failed: %x\n", GetLastError());
 		return;
 	}
 
@@ -58,14 +58,14 @@ void DisplayError(LPTSTR lpszFunction)
 
 	if (lpDisplayBuf == NULL){
 		LocalFree(lpMsgBuf);
-		MessageBoxPrintf(NULL, MB_OK, "Error", "LocalAlloc failed: %x\n", GetLastError());
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"LocalAlloc failed: %x\n", GetLastError());
 		return;
 	}
 
 
 	nMsgBuf = LocalSize(lpDisplayBuf);
 	if (nMsgBuf == 0){
-		MessageBoxPrintf(NULL, MB_OK, "Error", "LocalSize failed: %x\n", GetLastError());
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"LocalSize failed: %x\n", GetLastError());
 		return;
 	}
 
