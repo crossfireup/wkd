@@ -1,27 +1,40 @@
-#ifndef _SERVICECONTROL_H
-#define _SERVICECONTROL_H
+#ifndef _SERVICEINSTALLER_H
+#define _SERVICEINSTALLER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "ServiceBase.h"
 
-#define DRIVER_CTRL_INSTALL 0x01
-#define DRIVER_CTRL_REMOVE  0X02
+#define SERVICE_CTRL_INSTALL 0x01
+#define SERVICE_CTRL_REMOVE  0X02
 
-	int InstallDriver(SC_HANDLE schSCManager, LPCSTR serviceName, LPCSTR imagePath);
+class ServiceManager {
+public:
+	ServiceManager(LPTSTR imgPath, LPTSTR serviceName);
 
-	int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName);
+	~ServiceManager();
 
-	int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode);
+	/* service control */
+	int InstallService();
+	int BeginService();
+	int StopService();
+	int RemoveService();
+	int ServiceControl(int ctrlCode);
 
-	BOOLEAN
-		SetupDriverName(
-		_Inout_updates_bytes_all_(BufferLength) PTCHAR DriverLocation,
-		_In_ ULONG BufferLength
-		);
+	/* service information handler */
+	BOOL SetImagePath(LPCWSTR imgPath);
+	BOOL SetServiceName(LPCWSTR serviceName);
+	
+	LPCWSTR GetImagePath() const;
+	LPCWSTR GetServiceName() const;
 
-#ifdef __cplusplus
-}
-#endif
+private:
+	static SC_HANDLE hSCM_;
+	LPTSTR serviceName_;
+	LPTSTR imgPath_;
+	BOOLEAN initOk_;
 
-#endif /* _SERVICECONTROL_H */
+private:
+	ServiceManager();
+};
+
+
+#endif /* _SERVICEINSTALLER_H */

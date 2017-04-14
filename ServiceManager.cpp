@@ -1,25 +1,57 @@
 #include <Windows.h>
 #include <tchar.h>
 #include <strsafe.h>
+#include <Shlwapi.h>
 
 #include "comm.h"
-#include "ServiceControl.h"
+#include "ServiceManager.h"
+#include "HookService.h"
 
-int InstallDriver(SC_HANDLE schSCManager,
-	LPCSTR serviceName,
-	LPCSTR imagePath)
+SC_HANDLE ServiceManager::hSCM_ = NULL;
+
+ServiceManager::ServiceManager(LPTSTR imgPath, LPTSTR serviceName)
+{
+	if (NULL == hSCM_){
+		hSCM_ = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+
+		if (NULL == hSCM_){
+			DisplayError(L"OpenSCManager");
+			initOk_ = FALSE;
+			return;
+		}
+
+	}
+
+	if (NULL == imgPath || NULL == serviceName){
+		initOk_ = FALSE;
+		return;
+	}
+
+	if (!SetImagePath(imgPath)){
+		initOk_ = FALSE;
+		return;
+	}
+
+	if (!SetServiceName(imgPath)){
+		initOk_ = FALSE;
+		return;
+	}
+
+}
+
+int ServiceManager::InstallService()
 {
 	SC_HANDLE hService = NULL;
 	DWORD dwErr = 0;
 
-	hService = CreateService(schSCManager,
-		serviceName,
-		serviceName,
+	hService = CreateService(hSCM_,
+		serviceName_,
+		serviceName_,
 		SC_MANAGER_CREATE_SERVICE,
 		SERVICE_KERNEL_DRIVER,
 		SERVICE_DEMAND_START,
 		SERVICE_ERROR_IGNORE,
-		imagePath,
+		imgPath_,
 		NULL,
 		NULL,
 		NULL,
@@ -31,11 +63,11 @@ int InstallDriver(SC_HANDLE schSCManager,
 		dwErr = GetLastError();
 
 		if (ERROR_SERVICE_EXISTS == dwErr){
-			MessageBoxPrintf(NULL, MB_OK, "Information", "Driver has installed already");
+			MessageBoxPrintf(NULL, MB_OK, L"Information", L"Service has installed already");
 			return TRUE;
 		}
 		else if (ERROR_SERVICE_MARKED_FOR_DELETE == dwErr){
-			MessageBoxPrintf(NULL, MB_OK, "Information", "Driver marked for delete");
+			MessageBoxPrintf(NULL, MB_OK, L"Information", L"Service marked for delete");
 			return FALSE;
 		}
 		else {
@@ -49,18 +81,14 @@ int InstallDriver(SC_HANDLE schSCManager,
 	return TRUE;
 }
 
-int
-StartDriver(
-_In_ SC_HANDLE    SchSCManager,
-_In_ LPCTSTR      DriverName
-)
+int ServiceManager::BeginService()
 {
 	SC_HANDLE  schService;
 	int retCode = 0;
 	DWORD dwErr = 0;
 
-	schService = OpenService(SchSCManager,
-		DriverName,
+	schService = OpenService(hSCM_,
+		serviceName_,
 		SERVICE_ALL_ACCESS
 		);
 
@@ -84,7 +112,7 @@ _In_ LPCTSTR      DriverName
 			retCode = TRUE;
 		}
 		else {
-			DisplayError(_T("StartService"));
+			DisplayError(L"StartService");
 		}
 	}
 
@@ -93,23 +121,20 @@ _In_ LPCTSTR      DriverName
 	return retCode;
 }
 
-int StopDriver(
-_In_ SC_HANDLE    SchSCManager,
-_In_ LPCTSTR      DriverName
-)
+int ServiceManager::StopService()
 {
 	SC_HANDLE       schService = NULL;
 	int				retCode = 0;
 	SERVICE_STATUS  serviceStatus = { 0 };
 
-	schService = OpenService(SchSCManager,
-		DriverName,
+	schService = OpenService(hSCM_,
+		serviceName_,
 		SERVICE_STOP
 		);
 
 	if (schService == NULL) {
 
-		DisplayError(_T("OpenService"));
+		DisplayError(L"OpenService");
 		return FALSE;
 	}
 
@@ -118,23 +143,23 @@ _In_ LPCTSTR      DriverName
 		&serviceStatus
 		);
 	if (!retCode) {
-		DisplayError(_T("ControlServic"));
+		DisplayError(L"ControlServic");
 	}
 
 	CloseServiceHandle(schService);
 
 	return retCode;
-} //  StopDriver
+} //  StopService
 
 
-int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
+int ServiceManager::RemoveService()
 {
 	SC_HANDLE hService = NULL;
 	DWORD dwErr = 0;
 	int retCode = 0;
 
-	hService = OpenService(schSCManager,
-		serviceName,
+	hService = OpenService(hSCM_,
+		serviceName_,
 		SERVICE_STOP | DELETE);
 
 	if (NULL == hService){
@@ -147,7 +172,7 @@ int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
 	if (retCode == FALSE){
 		dwErr = GetLastError();
 		if (dwErr == ERROR_SERVICE_MARKED_FOR_DELETE){
-			MessageBoxPrintf(NULL, MB_OK, "Error", "The specified service has already been marked for deletion");
+			MessageBoxPrintf(NULL, MB_OK, L"Error", L"The specified service has already been marked for deletion");
 		}
 		else {
 			DisplayError(_T("DeleteService"));
@@ -160,7 +185,7 @@ int RemoveDriver(SC_HANDLE schSCManager, LPCSTR serviceName)
 }
 
 
-int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
+int ServiceManager::ServiceControl(int ctrlCode)
 {
 	SC_HANDLE schSCManager = NULL;
 	int retCode = TRUE;
@@ -172,26 +197,45 @@ int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
 		);
 
 	if (schSCManager == NULL){
-		DisplayError(_T("OpenSCManager"));
+		DisplayError(L"OpenSCManager");
 		return FALSE;
 	}
 
 	switch (ctrlCode){
-	case DRIVER_CTRL_INSTALL:
-		if (InstallDriver(schSCManager, driverName, driverLocation)){
-			StartDriver(schSCManager, driverName);
+	case SERVICE_CTRL_INSTALL:
+		if (InstallService()){
+			BeginService();
 		}
 		break;
 
-	case DRIVER_CTRL_REMOVE:
-		StopDriver(schSCManager, driverName);
-		RemoveDriver(schSCManager, driverName);
+	case SERVICE_CTRL_REMOVE:
+		StopService();
+		RemoveService();
 		break;
 
 	default:
-		MessageBoxPrintf(NULL, MB_OK, "Error", "ManageDriver error, not implemented: %x", ctrlCode);
-		retCode = FALSE;
-		break;
+	{
+		SC_HANDLE schService;
+		SERVICE_STATUS serviceStatus = { 0 };
+
+		schService = OpenService(hSCM_,
+			serviceName_,
+			SERVICE_STOP
+			);
+
+		if (schService == NULL) {
+			DisplayError(L"OpenService");
+			retCode = FALSE;
+			break;
+		}
+		if (!ControlService(schService, ctrlCode, &serviceStatus)){
+			DisplayError(L"ServiceContro");
+			retCode = FALSE;
+		}
+		CloseServiceHandle(schService);
+		retCode = TRUE;
+	}
+	break;
 	}
 
 	CloseServiceHandle(schSCManager);
@@ -199,55 +243,63 @@ int ManageDriver(LPCTSTR  driverName, LPCTSTR driverLocation, int ctrlCode)
 	return(retCode);
 }
 
-BOOLEAN
-SetupDriverName(
-_Inout_updates_bytes_all_(BufferLength) PTCHAR DriverLocation,
-_In_ ULONG BufferLength
-)
+BOOL ServiceManager::SetImagePath(LPCWSTR imgPath)
 {
-	HANDLE hDevice = NULL;
-	DWORD driverLocLen = 0;
+	LPWSTR imgName = NULL;
+	WCHAR bufferPath[MAX_PATH];
+	SIZE_T nLen = 0;
 
-	//
-	// Get the current directory.
-	//
-
-	driverLocLen = GetCurrentDirectory(BufferLength,
-		DriverLocation
-		);
-
-	if (driverLocLen == 0) {
-
-		DisplayError(_T("GetCurrentDirectory"));
-
+	if (imgPath == NULL || 0 == wcslen(imgPath)){
 		return FALSE;
 	}
 
-	//
-	// Setup path name to driver file.
-	//
-	if (FAILED(StringCchCat(DriverLocation, BufferLength, _T("\\"DRIVER_NAME".sys")))) {
+	if (PathFileExists(imgPath)){
+		nLen = wcslen(imgPath) + 1;
+		imgPath_ = new WCHAR[nLen];
+		StringCchCopy(imgPath_, nLen, imgPath);
+
+		return TRUE;
+	}
+
+	/* find image in current directory */
+	nLen = GetCurrentDirectory(MAX_PATH, bufferPath);
+
+	if (nLen == 0){
+		DisplayError(L"GetCurrentDirectory");
+		return FALSE;
+	}
+
+	if (nLen > MAX_PATH){
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"Buffer too small, need %d characters\n", nLen);
+		return FALSE;
+	}
+
+	if (FAILED(StringCchCat(bufferPath, MAX_PATH, imgPath))){
 		DisplayError(_T("StringCbCat"));
 		return FALSE;
 	}
 
-	//
-	// Insure driver file is in the specified directory.
-	//
-
-	if ((hDevice = CreateFile(DriverLocation,
-		GENERIC_READ,
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-		)) == INVALID_HANDLE_VALUE) {
-		MessageBoxPrintf(NULL, MB_OK, "Error", "%s.sys is not loaded.\n", DRIVER_NAME);
+	if (!PathFileExists(bufferPath)) {
+		MessageBoxPrintf(NULL, MB_OK, L"Error", L"%s is not found.\n", imgPath);
 		return FALSE;
 	}
 
-	CloseHandle(hDevice);
+	nLen = wcslen(bufferPath) + 1;
+	imgPath_ = new WCHAR[];
+	StringCchCopy(imgPath_, nLen, bufferPath);
 
 	return TRUE;
-}   // SetupDriverName
+}
+
+BOOL ServiceManager::SetServiceName(LPCWSTR serviceName)
+{
+	SIZE_T nLen = 0;
+
+	if (serviceName == NULL || (nLen = wcslen(serviceName)) == 0)
+		return FALSE;
+
+	serviceName_ = new WCHAR[nLen + 1];
+	StringCchCopy(serviceName_, nLen + 1, serviceName);
+
+	return TRUE;
+}
