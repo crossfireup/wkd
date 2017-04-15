@@ -29,10 +29,10 @@ private:
 
 	void OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify);	 
 
-	INT_PTR CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg,	WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg,	WPARAM wParam, LPARAM lParam);
 
 	/* Dialog procedure for pe analyze */
-	INT_PTR CALLBACK DialogProcToolPE(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK DialogProcToolPE(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 };
 

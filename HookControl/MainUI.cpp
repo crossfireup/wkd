@@ -193,7 +193,7 @@ void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
 	case IDM_TOOLS_PEANALYZE:
 		if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
 			DWORD dwError = GetLastError();
-			DisplayError(_T(__FUNCTION__"DialogBox"));
+			DisplayError(_T(__FUNCTION__)_T("#DialogBox"));
 		}
 		break;
 
@@ -208,7 +208,6 @@ void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
 	default:
 		break;
 	}
-	break;
 }
 
 
@@ -257,7 +256,7 @@ INT_PTR CALLBACK MainUI::AboutDlgProc(HWND hDlg,
 
 		lpBuffer = (LPTSTR)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512 * sizeof(TCHAR));
 		if (lpBuffer == NULL){
-			DisplayError(_T(__FUNCTION__"#LocalAlloc"));
+			DisplayError(_T(__FUNCTION__)_T("#LocalAlloc"));
 			return FALSE;
 		}
 		LoadString(hInst, IDS_VERSION, lpBuffer, 512);
@@ -307,14 +306,14 @@ INT_PTR CALLBACK MainUI::DialogProcToolPE(
 
 			lpBuffer = (LPWSTR)(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
 			if (lpBuffer == NULL){
-				DisplayError(_T(__FUNCTION__"LocalAlloc"));
+				DisplayError(_T(__FUNCTION__)_T("LocalAlloc"));
 				return FALSE;
 			}
 			memset(lpBuffer, '\0', nMaxCount);
 
 			if (!GetDlgItemText(hDlg, IDC_EDIT_PROCNAME, lpBuffer, nMaxCount))
 			{
-				DisplayError(_T(__FUNCTION__"GetDlgItemText"));
+				DisplayError(_T(__FUNCTION__)_T("GetDlgItemText"));
 				LocalFree(lpBuffer);
 				return FALSE;
 			}

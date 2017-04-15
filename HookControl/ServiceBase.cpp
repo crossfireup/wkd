@@ -252,7 +252,7 @@ void ServiceBase::WriteEventLogEntry(PWSTR pszMessage, WORD wType)
 		lpszStrings[0] = name_;
 		lpszStrings[1] = pszMessage;
 
-		ReportEvent(hEventSrc, wType, 0, 0, NULL, 2, 0, lpszStrings, NULL);
+		ReportEvent(hEventSrc, wType, 0, 0, NULL, 2, 0, &lpszStrings[0], NULL);
 
 		DeregisterEventSource(hEventSrc);
 	}

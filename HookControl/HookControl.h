@@ -2,6 +2,7 @@
 #define _HOOKCONTROL_H
 
 #include <windows.h>
+#include "..\HookSSDT\public.h"
 #include "ServiceBase.h"
 #include "ServiceManager.h"
 
@@ -19,7 +20,7 @@ public:
 
 private:
 	ServiceManager& serviceManager_;
-	HookService& service_;
+	ServiceBase& service_;
 	HANDLE hDevice_;
 	REGISTER_EVENT registerEvt_;
 

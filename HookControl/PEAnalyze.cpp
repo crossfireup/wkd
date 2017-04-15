@@ -160,7 +160,7 @@ PVOID GetImageMapView(LPCTSTR szFileName)
 	PVOID pvFileBase = NULL;
 
 	if (!PathFileExists(szFileName)){
-		DisplayError(_T(__FUNCTION__"PathFileExists"));
+		DisplayError(_T(__FUNCTION__)_T("PathFileExists"));
 		return INVALID_HANDLE_VALUE;
 	}
 
@@ -173,12 +173,12 @@ PVOID GetImageMapView(LPCTSTR szFileName)
 		NULL);
 
 	if (hFile == INVALID_HANDLE_VALUE){
-		DisplayError(_T(__FUNCTION__"WriteFile"));
+		DisplayError(_T(__FUNCTION__)_T("#WriteFile"));
 		return hFile;
 	}
 
 	if (!GetFileSizeEx(hFile, &lFileSize)){
-		DisplayError(_T(__FUNCTION__"GetFileSizeEx"));
+		DisplayError(_T(__FUNCTION__)_T("#GetFileSizeEx"));
 		goto out;
 	}
 

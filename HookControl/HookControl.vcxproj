@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Win8.1 Debug|Win32">
       <Configuration>Win8.1 Debug</Configuration>
@@ -77,7 +77,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4EF0138D-47DB-4D3A-BF6A-1C0AFDE3B8A5}</ProjectGuid>
     <TemplateGuid>{504102d4-2172-473c-8adf-cd96e308f257}</TemplateGuid>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <MinimumVisualStudioVersion>11.0</MinimumVisualStudioVersion>
     <Configuration>Win8.1 Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>

@@ -5,6 +5,7 @@
 #include <TlHelp32.h>
 
 #include "comm.h"
+#include "ProcessUtil.h"
 
 
 BOOL GetProcessImageName(DWORD  pid, LPTSTR lpFilename)

@@ -11,7 +11,6 @@
 
 #include "comm.h"
 #include "resource.h"
-#include "..\HookSSDT\public.h"
 #include "HookControl.h"
 #include "ServiceManager.h"
 #include "ProcessUtil.h"
@@ -78,7 +77,7 @@ BOOL HookControl::DriverIoControl(int ctrlCode)
 		NULL                                // hTemplateFile
 		);
 	if (hDevice_ == INVALID_HANDLE_VALUE){
-		DisplayError(_T(__FUNCTION__"#CreateFile"));
+		DisplayError(_T(__FUNCTION__)_T("#CreateFile"));
 		bRet = FALSE;
 		goto out;
 	}
