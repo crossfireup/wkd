@@ -58,18 +58,18 @@ MainUI::~MainUI()
 
 UINT MainUI::CreateMainUIAndLoop(HINSTANCE hInstance, wchar_t *cmdline, int nCmdShow, PVOID cls)
 {
-	if (RegisterClass(hInstance)){
+	if (!MainUI::RegisterClass(hInstance)){
 		return FALSE;
 	}
 
-	HMENU hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU));
+	HMENU hMenu = ::LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU));
 
 	if (NULL == hMenu){
 		MessageBoxPrintf(NULL, MB_OK, L"Error", L"Load Menu error: %08lx\n", GetLastError());
 		return FALSE;
 	}
 
-	HWND hWnd = CreateWindow(
+	HWND hWnd = ::CreateWindow(
 		szWindowClass,
 		szTitle,
 		WS_OVERLAPPEDWINDOW,
@@ -83,7 +83,7 @@ UINT MainUI::CreateMainUIAndLoop(HINSTANCE hInstance, wchar_t *cmdline, int nCmd
 
 	if (!hWnd)
 	{
-		MessageBox(NULL,
+		::MessageBox(NULL,
 			_T("Call to CreateWindow failed!"),
 			_T("Win32 Guided Tour"),
 			MB_OK);
@@ -91,15 +91,15 @@ UINT MainUI::CreateMainUIAndLoop(HINSTANCE hInstance, wchar_t *cmdline, int nCmd
 		return FALSE;
 	}
 
-	ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
+	::ShowWindow(hWnd, nCmdShow);
+	::UpdateWindow(hWnd);
 
 	// Main message loop:
 	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0))
+	while (::GetMessage(&msg, NULL, 0, 0))
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		::TranslateMessage(&msg);
+		::DispatchMessage(&msg);
 	}
 
 	return (int)msg.wParam;
@@ -122,9 +122,9 @@ int MainUI::RegisterClass(HINSTANCE hInstance)
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
-	if (!RegisterClassEx(&wcex))
+	if (!::RegisterClassEx(&wcex))
 	{
-		MessageBox(NULL,
+		::MessageBox(NULL,
 			_T("Call to RegisterClassEx failed!"),
 			_T("Win32 Guided Tour"),
 			MB_OK);
@@ -137,7 +137,7 @@ int MainUI::RegisterClass(HINSTANCE hInstance)
 
 MainUI* MainUI::FromWindow(HWND hMainWnd)
 {
-
+	return reinterpret_cast<MainUI *>(::GetWindowLongPtr(hMainWnd, GWL_USERDATA));
 }
 
 bool MainUI::OnCreate(HWND hWnd, LPCREATESTRUCT)
@@ -148,12 +148,14 @@ bool MainUI::OnCreate(HWND hWnd, LPCREATESTRUCT)
 	
 	MainUIAppData.hookCtrl = &HookControl(*MainUIAppData.service, *MainUIAppData.serviceManager);
 
-	SetWindowLongPtr(hWnd, GWL_USERDATA, reinterpret_cast<INT_PTR>(&MainUIAppData));
+	::SetWindowLongPtr(hWnd, GWL_USERDATA, reinterpret_cast<INT_PTR>(hWnd));
+
+	return true;
 }
 
 void MainUI::OnDestroy(HWND hWnd)
 {
-
+	::PostQuitMessage(0);
 }
 
 void MainUI::OnSize(HWND hWnd)
@@ -168,7 +170,7 @@ void MainUI::OnPaint(HWND hWnd)
 
 void MainUI::OnFileExit(HWND hWnd)
 {
-
+	OnDestroy(hWnd);
 }
 
 void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
@@ -191,8 +193,8 @@ void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
 		break;
 
 	case IDM_TOOLS_PEANALYZE:
-		if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
-			DWORD dwError = GetLastError();
+		if (::DialogBox(hInst, MAKEINTRESOURCE(IDD_TOOLS_PROCNAME), hWnd, DialogProcToolPE) == -1){
+			DWORD dwError = ::GetLastError();
 			DisplayError(_T(__FUNCTION__)_T("#DialogBox"));
 		}
 		break;
@@ -202,7 +204,7 @@ void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
 		break;
 
 	case IDM_HELP_ABOUT:
-		DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hWnd, AboutDlgProc);
+		::DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUT), hWnd, AboutDlgProc);
 		break;
 
 	default:
@@ -223,24 +225,19 @@ void MainUI::OnComand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
 LRESULT CALLBACK MainUI::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HMENU hMenu;
+	MainUI* host = FromWindow(hWnd);
 
 	switch (message)
 	{
-	case WM_CREATE:
+		HANDLE_MSG(hWnd, WM_CREATE, OnCreate);
+		HANDLE_MSG(hWnd, WM_COMMAND, host->OnComand);
+		HANDLE_MSG(hWnd, WM_DESTROY, host->OnDestroy);
 
-		break;
-
-	case WM_COMMAND:
-		
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
 	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	}
 
-	return 0;
+	return ::DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 
@@ -254,14 +251,14 @@ INT_PTR CALLBACK MainUI::AboutDlgProc(HWND hDlg,
 	{
 		LPTSTR lpBuffer = NULL;
 
-		lpBuffer = (LPTSTR)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512 * sizeof(TCHAR));
+		lpBuffer = (LPTSTR)::LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, 512 * sizeof(TCHAR));
 		if (lpBuffer == NULL){
 			DisplayError(_T(__FUNCTION__)_T("#LocalAlloc"));
 			return FALSE;
 		}
-		LoadString(hInst, IDS_VERSION, lpBuffer, 512);
-		SetDlgItemText(hDlg, IDC_STATIC_VERSION, lpBuffer);
-		LocalFree(lpBuffer);
+		::LoadString(hInst, IDS_VERSION, lpBuffer, 512);
+		::SetDlgItemText(hDlg, IDC_STATIC_VERSION, lpBuffer);
+		::LocalFree(lpBuffer);
 		return TRUE;
 	}
 	case WM_COMMAND:
@@ -269,7 +266,7 @@ INT_PTR CALLBACK MainUI::AboutDlgProc(HWND hDlg,
 		switch (LOWORD(wParam)){
 		case IDOK:
 		case IDCANCEL:
-			EndDialog(hDlg, 0);
+			::EndDialog(hDlg, 0);
 			return TRUE;
 		}
 		break;
@@ -287,7 +284,7 @@ INT_PTR CALLBACK MainUI::DialogProcToolPE(
 	_In_ LPARAM lParam
 	)
 {
-	static LPTSTR lpBuffer;
+	static LPWSTR lpBuffer;
 	static const int nMaxCount = 512 * sizeof(TCHAR);;
 
 	switch (uMsg){
@@ -304,45 +301,45 @@ INT_PTR CALLBACK MainUI::DialogProcToolPE(
 			DWORD pid;
 			PVOID pImageBase;
 
-			lpBuffer = (LPWSTR)(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
+			lpBuffer = (LPWSTR)::LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
 			if (lpBuffer == NULL){
 				DisplayError(_T(__FUNCTION__)_T("LocalAlloc"));
 				return FALSE;
 			}
-			memset(lpBuffer, '\0', nMaxCount);
+			::memset(lpBuffer, '\0', nMaxCount);
 
 			if (!GetDlgItemText(hDlg, IDC_EDIT_PROCNAME, lpBuffer, nMaxCount))
 			{
 				DisplayError(_T(__FUNCTION__)_T("GetDlgItemText"));
-				LocalFree(lpBuffer);
+				::LocalFree(lpBuffer);
 				return FALSE;
 			}
 
 			if (!GetPidByName(lpBuffer, &pid)){
-				LocalFree(lpBuffer);
+				::LocalFree(lpBuffer);
 				return FALSE;
 			}
 
 			memset(lpBuffer, '\0', nMaxCount);
 			if (!GetProcessImageName(pid, lpBuffer)){
-				LocalFree(lpBuffer);
+				::LocalFree(lpBuffer);
 				return FALSE;
 			}
 
 			pImageBase = GetImageMapView(lpBuffer);
 			if (!pImageBase){
-				LocalFree(lpBuffer);
+				::LocalFree(lpBuffer);
 				return FALSE;
 			}
 
 			GetDosHeader(pImageBase);
-			LocalFree(lpBuffer);
+			::LocalFree(lpBuffer);
 			return TRUE;
 		}
 
 		case IDCANCEL:
 		case IDC_BT_PN_CANCEL:
-			EndDialog(hDlg, 0);
+			::EndDialog(hDlg, 0);
 			return TRUE;
 		}
 	}

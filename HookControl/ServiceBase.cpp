@@ -117,7 +117,8 @@ void ServiceBase::Start(DWORD argc, LPWSTR *argv)
 
 void ServiceBase::OnStart(DWORD argc, PWSTR *argv)
 {
-
+	UNREFERENCED_PARAMETER(argc);
+	UNREFERENCED_PARAMETER(argv);
 }
 
 void ServiceBase::Stop()
@@ -252,7 +253,7 @@ void ServiceBase::WriteEventLogEntry(PWSTR pszMessage, WORD wType)
 		lpszStrings[0] = name_;
 		lpszStrings[1] = pszMessage;
 
-		ReportEvent(hEventSrc, wType, 0, 0, NULL, 2, 0, &lpszStrings[0], NULL);
+		ReportEvent(hEventSrc, wType, 0, 0, NULL, 2, 0, const_cast<LPCWSTR *>(&lpszStrings[0]), NULL);
 
 		DeregisterEventSource(hEventSrc);
 	}
@@ -265,7 +266,7 @@ void ServiceBase::WriteErrorLogEntry(PWSTR pszFunction, DWORD dwError /*= GetLas
 	wchar_t szMessages[512];
 	
 	StringCbPrintf(szMessages, ARRAYSIZE(szMessages), L"%s failed with errorCode: %08lx", pszFunction, dwError);
-	WriteErrorLogEntry(szMessages, dwError);
+	WriteEventLogEntry(szMessages, dwError);
 
 	return;
 }

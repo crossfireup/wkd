@@ -38,10 +38,7 @@ BOOL GetProcessImageName(DWORD  pid, LPTSTR lpFilename)
 BOOL GetPidByName(LPCTSTR lpProcName, DWORD *pid)
 {
 	HANDLE hProcessSnap;
-	HANDLE hProcess;
 	PROCESSENTRY32 pe32;
-	DWORD dwPriorityClass;
-	DWORD dwRet = TRUE;
 
 	if (lpProcName == NULL){
 		return FALSE;

@@ -1,11 +1,11 @@
 #ifndef _PROCESSUTIL_H
 #define _PROCESSUTIL_H
 
-#include <Windows.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <Windows.h>
 
 	BOOL GetProcessImageName(DWORD  pid, LPTSTR lpFilename);
 	BOOL GetPidByName(LPCTSTR lpProcName, DWORD *pid);

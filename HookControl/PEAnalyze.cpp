@@ -190,7 +190,7 @@ PVOID GetImageMapView(LPCTSTR szFileName)
 		NULL);
 
 	if (hFileMap == NULL){
-		DisplayError(_T(__FUNCTION__"CreateFileMapping"));
+		DisplayError(_T(__FUNCTION__)_T("CreateFileMapping"));
 		goto out;
 	}
 

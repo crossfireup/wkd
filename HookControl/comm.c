@@ -15,7 +15,7 @@ int MessageBoxPrintf(HWND hWnd, UINT uType, LPCTSTR lpCaption, LPCTSTR fmt, ...)
 
 	memset(buf, '\0', BUF_SIZE * sizeof(TCHAR));
 
-	nSize = vsnprintf_s(buf, BUF_SIZE * sizeof(TCHAR), (BUF_SIZE - 1) * sizeof(TCHAR), fmt, ap);
+	nSize = StringCbVPrintf(buf, BUF_SIZE * sizeof(TCHAR), fmt, ap);
 	if (nSize < 0)
 		return nSize;
 

@@ -39,6 +39,11 @@ ServiceManager::ServiceManager(LPTSTR imgPath, LPTSTR serviceName)
 
 }
 
+ServiceManager::~ServiceManager()
+{
+
+}
+
 int ServiceManager::InstallService()
 {
 	SC_HANDLE hService = NULL;

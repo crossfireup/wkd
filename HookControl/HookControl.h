@@ -24,7 +24,9 @@ private:
 	HANDLE hDevice_;
 	REGISTER_EVENT registerEvt_;
 
-	//HookControl();
-}
+	HookControl();
+	HookControl(const HookControl&);
+	HookControl& operator=(const HookControl&);
+};
 
 #endif /* _HOOKCONTROL_H */
