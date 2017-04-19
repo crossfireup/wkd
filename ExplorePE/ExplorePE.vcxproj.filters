@@ -58,6 +58,12 @@
     <ClCompile Include="GeneratedFiles\qrc_ExplorePEWindow.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
+    <ClCompile Include="PEAnalyze.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessUtil.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -65,6 +71,12 @@
     </ClInclude>
     <ClInclude Include="GeneratedFiles\ui_ExplorePE.h">
       <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PEAnalyze.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessUtil.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

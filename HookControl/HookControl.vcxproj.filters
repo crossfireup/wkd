@@ -24,12 +24,6 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PEAnalyze.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ProcessUtil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MainUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -47,16 +41,10 @@
     <ClCompile Include="comm.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ProcessUtil.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MainUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HookControl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PEAnalyze.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ServiceBase.cpp">

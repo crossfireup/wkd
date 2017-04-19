@@ -9,8 +9,6 @@
 #include "ServiceManager.h"
 #include "HookControl.h"
 #include "..\HookSSDT\public.h"
-#include "PEAnalyze.h"
-#include "ProcessUtil.h"
 #include "MainUI.h"
 
 struct AppData_ {
@@ -322,26 +320,6 @@ INT_PTR CALLBACK MainUI::DialogProcToolPE(
 				return FALSE;
 			}
 
-			if (!GetPidByName(lpBuffer, &pid)){
-				::LocalFree(lpBuffer);
-				return FALSE;
-			}
-
-			memset(lpBuffer, '\0', nMaxCount);
-			if (!GetProcessImageName(pid, lpBuffer)){
-				::LocalFree(lpBuffer);
-				return FALSE;
-			}
-
-			pImageBase = GetImageMapView(lpBuffer);
-			if (!pImageBase){
-				::LocalFree(lpBuffer);
-				return FALSE;
-			}
-
-			GetDosHeader(pImageBase);
-			::LocalFree(lpBuffer);
-			return TRUE;
 		}
 
 		case IDCANCEL:

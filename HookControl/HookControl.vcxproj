@@ -55,8 +55,6 @@
     <ClInclude Include="HookControl.h" />
     <ClInclude Include="HookService.h" />
     <ClInclude Include="MainUI.h" />
-    <ClInclude Include="PEAnalyze.h" />
-    <ClInclude Include="ProcessUtil.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ServiceBase.h" />
     <ClInclude Include="ServiceManager.h" />
@@ -66,8 +64,6 @@
     <ClCompile Include="HookControl.cpp" />
     <ClCompile Include="HookService.cpp" />
     <ClCompile Include="MainUI.cpp" />
-    <ClCompile Include="PEAnalyze.cpp" />
-    <ClCompile Include="ProcessUtil.c" />
     <ClCompile Include="ServiceBase.cpp" />
     <ClCompile Include="ServiceManager.cpp" />
   </ItemGroup>
