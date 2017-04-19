@@ -308,3 +308,8 @@ BOOL ServiceManager::SetServiceName(LPCWSTR serviceName)
 
 	return TRUE;
 }
+
+BOOL ServiceManager::IsInitOk() const
+{
+	return initOk_;
+}

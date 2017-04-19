@@ -145,6 +145,13 @@ bool MainUI::OnCreate(HWND hWnd, LPCREATESTRUCT)
 	MainUIAppData.service = &HookService(DRIVER_NAME);
 
 	MainUIAppData.serviceManager = &ServiceManager(DRIVER_NAME, DRIVER_NAME);
+
+	if (MainUIAppData.serviceManager->IsInitOk() == FALSE) {
+		EnableMenuItem(GetMenu(hWnd), IDM_FILE_INSTALLDRIVER, MF_GRAYED);
+		EnableMenuItem(GetMenu(hWnd), IDM_FILE_REMOVEDRIVER, MF_GRAYED);
+		EnableMenuItem(GetMenu(hWnd), IDM_FILE_STARTMON, MF_GRAYED);
+		EnableMenuItem(GetMenu(hWnd), IDM_FILE_STOPMON, MF_GRAYED);
+	}
 	
 	MainUIAppData.hookCtrl = &HookControl(*MainUIAppData.service, *MainUIAppData.serviceManager);
 

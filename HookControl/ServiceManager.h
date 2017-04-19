@@ -26,6 +26,8 @@ public:
 	LPCWSTR GetImagePath() const;
 	LPCWSTR GetServiceName() const;
 
+	BOOL IsInitOk() const;
+
 private:
 	static SC_HANDLE hSCM_;
 	LPTSTR serviceName_;
