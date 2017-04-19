@@ -64,6 +64,9 @@
     <ClCompile Include="ProcessUtil.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="comm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -76,6 +79,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ProcessUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="comm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

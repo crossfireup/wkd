@@ -303,22 +303,6 @@ INT_PTR CALLBACK MainUI::DialogProcToolPE(
 		case IDOK:
 		case IDC_BT_PN_OK:
 		{
-			DWORD pid;
-			PVOID pImageBase;
-
-			lpBuffer = (LPWSTR)::LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, nMaxCount);
-			if (lpBuffer == NULL){
-				DisplayError(_T(__FUNCTION__)_T("LocalAlloc"));
-				return FALSE;
-			}
-			::memset(lpBuffer, '\0', nMaxCount);
-
-			if (!GetDlgItemText(hDlg, IDC_EDIT_PROCNAME, lpBuffer, nMaxCount))
-			{
-				DisplayError(_T(__FUNCTION__)_T("GetDlgItemText"));
-				::LocalFree(lpBuffer);
-				return FALSE;
-			}
 
 		}
 

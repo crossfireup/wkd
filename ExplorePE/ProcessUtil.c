@@ -1,10 +1,4 @@
-#include <Windows.h>
-#include <tchar.h>
-#include <Shlwapi.h>
-#include <Psapi.h>
-#include <TlHelp32.h>
-
-#include "comm.h"
+#include "stdafx.h"
 #include "ProcessUtil.h"
 
 

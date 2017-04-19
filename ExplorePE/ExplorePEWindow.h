@@ -10,6 +10,12 @@ class ExplorePEWindow : public QMainWindow
 public:
 	ExplorePEWindow(QWidget *parent = Q_NULLPTR);
 
+	private slots:
+	int chooseProcess();
+
 private:
 	Ui::ExplorePEClass ui;
+	
+	void createMenus();
+		
 };

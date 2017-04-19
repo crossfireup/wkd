@@ -77,8 +77,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="comm.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
+    </ClCompile>
     <ClCompile Include="PEAnalyze.cpp" />
-    <ClCompile Include="ProcessUtil.c" />
+    <ClCompile Include="ProcessUtil.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
+    </ClCompile>
     <ClCompile Include="ExplorePEWindow.cpp" />
     <ClCompile Include="GeneratedFiles\Debug\moc_ExplorePEWindow.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -99,6 +106,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="comm.h" />
     <ClInclude Include="PEAnalyze.h" />
     <ClInclude Include="ProcessUtil.h" />
     <ClInclude Include="GeneratedFiles\ui_ExplorePE.h" />
