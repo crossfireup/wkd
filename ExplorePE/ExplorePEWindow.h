@@ -12,6 +12,7 @@ public:
 
 	private slots:
 	int chooseProcess();
+	void showAboutInfo();
 
 private:
 	Ui::ExplorePEClass ui;

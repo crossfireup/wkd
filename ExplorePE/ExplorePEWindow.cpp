@@ -57,10 +57,18 @@ if (!GetDlgItemText(hDlg, IDC_EDIT_PROCNAME, lpBuffer, nMaxCount))
 }
 
 
+void ExplorePEWindow::showAboutInfo()
+{
+	QMessageBox::about(this, tr("About"), tr("ExplorePE Version 0.1 @Microports"));
+}
+
 void ExplorePEWindow::createMenus()
 {
 	QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-	fileMenu->addAction("&Open", this, &ExplorePEWindow::chooseProcess, QKeySequence::Open);
-	fileMenu->addAction("Exit", this, &ExplorePEWindow::close, QKeySequence::Close);
+	fileMenu->addAction(tr("&Open"), this, &ExplorePEWindow::chooseProcess, QKeySequence::Open);
+	fileMenu->addAction(tr("Exit"), this, &ExplorePEWindow::close, QKeySequence::Close);
+
+	QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+	helpMenu->addAction(tr("A&bout"), this, &ExplorePEWindow::showAboutInfo);
 
 }
